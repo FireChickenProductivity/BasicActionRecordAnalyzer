@@ -6,8 +6,7 @@ from typing import List
 from action_records import BasicAction, read_file_record, TalonCapture, CommandChain
 import os
 
-DATA_FOLDER = 'BAR Data'
-EXPECTED_PARENT = 'user'
+DATA_FOLDER = 'Recommendations'
 EXPECTED_GRANDPARENT = 'talon'
 INPUT_FILENAME = 'record.txt'
 OUTPUT_FILENAME_PREFIX = 'recommendations '
@@ -576,10 +575,6 @@ class ProgramDirectoryInvalidException(Exception):
 def compute_data_directory():
     program_path = PurePath(__file__)
     parent = program_path.parent
-    while parent.stem != EXPECTED_PARENT:
-        parent = parent.parent
-    if parent.parent.stem != EXPECTED_GRANDPARENT:
-        raise ProgramDirectoryInvalidException('The program must be stored in the talon user directory!')
     return os.path.join(parent, DATA_FOLDER)
 
 def create_file_if_nonexistent(path):
