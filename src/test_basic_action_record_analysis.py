@@ -1,4 +1,7 @@
 import unittest
+from text_separation import *
+from basic_action_record_analysis import *
+from action_records import *
 
 class TestPotentialCommandInformation(unittest.TestCase):
     def test_potential_command_information_for_press_a_has_one_action(self):
@@ -720,6 +723,4 @@ def generate_key_press_action(keystroke: str):
     return BasicAction('key', [keystroke])
 
 if __name__ == '__main__':
-    from basic_action_record_analysis import *
-    from action_records import *
     unittest.main()
