@@ -1,7 +1,7 @@
 import unittest
-from text_separation import *
-from basic_action_record_analysis import *
-from action_records import *
+from src.action_records import *
+from src.basic_action_record_analysis import *
+from src.text_separation import *
 
 class TestPotentialCommandInformation(unittest.TestCase):
     def test_potential_command_information_for_press_a_has_one_action(self):
