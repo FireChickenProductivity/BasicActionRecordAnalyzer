@@ -574,8 +574,8 @@ class ProgramDirectoryInvalidException(Exception):
 
 def compute_data_directory():
     program_path = PurePath(__file__)
-    parent = program_path.parent
-    return os.path.join(parent, DATA_FOLDER)
+    grandparent = program_path.parent.parent
+    return os.path.join(grandparent, DATA_FOLDER)
 
 def create_file_if_nonexistent(path):
     if not os.path.exists(path):
@@ -651,6 +651,10 @@ def generate_recommendations(data_directory, input_path):
     output_recommendations(recommendations, data_directory)
     print('completed')
 
+def guarantee_directory_exists(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
 def get_file_input_path_from_user() -> str:
     path = ''
     needs_valid_path = True
@@ -663,9 +667,10 @@ def get_file_input_path_from_user() -> str:
     return path
 
 def main():
-    data_directory = compute_data_directory()
+    recommendation_output_directory = compute_data_directory()
+    guarantee_directory_exists(recommendation_output_directory)
     input_path = get_file_input_path_from_user()
-    generate_recommendations(data_directory, input_path)
+    generate_recommendations(recommendation_output_directory, input_path)
 
 if __name__ == '__main__':
     main()
