@@ -6,7 +6,8 @@ from typing import List
 from action_records import BasicAction, read_file_record, TalonCapture, CommandChain
 import os
 
-DATA_FOLDER = 'Recommendations'
+RECOMMENDATION_OUTPUT_DIRECTORY = 'Recommendations'
+DATA_DIRECTORY = 'Data'
 EXPECTED_GRANDPARENT = 'talon'
 INPUT_FILENAME = 'record.txt'
 OUTPUT_FILENAME_PREFIX = 'recommendations '
@@ -572,10 +573,16 @@ class CommandInformationSet:
 class ProgramDirectoryInvalidException(Exception):
     pass
 
-def compute_data_directory():
+def compute_main_program_directory():
     program_path = PurePath(__file__)
     grandparent = program_path.parent.parent
-    return os.path.join(grandparent, DATA_FOLDER)
+    return grandparent
+
+def compute_recommendation_output_directory(main_program_directory):
+    return os.path.join(main_program_directory, RECOMMENDATION_OUTPUT_DIRECTORY)
+
+def compute_data_directory(main_program_directory):
+    return os.path.join(main_program_directory, DATA_DIRECTORY)
 
 def create_file_if_nonexistent(path):
     if not os.path.exists(path):
@@ -643,12 +650,12 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
     sorted_recommended_commands = sorted(recommended_commands, key = lambda command: command.get_number_of_times_used(), reverse = True)
     return sorted_recommended_commands
 
-def generate_recommendations(data_directory, input_path):
+def generate_recommendations(recommendation_directory, data_directory, input_path):
     record = obtain_file_record(data_directory, input_path)
     print('finished reading record')
     recommendations = compute_recommendations_from_record(record, 20, verbose = True)
     print('outputting recommendations')
-    output_recommendations(recommendations, data_directory)
+    output_recommendations(recommendations, recommendation_directory)
     print('completed')
 
 def guarantee_directory_exists(directory):
@@ -667,10 +674,13 @@ def get_file_input_path_from_user() -> str:
     return path
 
 def main():
-    recommendation_output_directory = compute_data_directory()
+    program_directory = compute_main_program_directory()
+    recommendation_output_directory = compute_recommendation_output_directory(program_directory)
     guarantee_directory_exists(recommendation_output_directory)
+    data_directory = compute_data_directory(program_directory)
+    guarantee_directory_exists(data_directory)
     input_path = get_file_input_path_from_user()
-    generate_recommendations(recommendation_output_directory, input_path)
+    generate_recommendations(recommendation_output_directory, data_directory, input_path)
 
 if __name__ == '__main__':
     main()
