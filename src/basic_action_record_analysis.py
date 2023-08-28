@@ -4,8 +4,8 @@ from pathlib import PurePath
 from typing import List
 import os
 
-from .action_records import BasicAction, read_file_record, TalonCapture, CommandChain
-from .text_separation import TextSeparationAnalyzer
+from action_records import BasicAction, read_file_record, TalonCapture, CommandChain
+from text_separation import TextSeparationAnalyzer
 
 RECOMMENDATION_OUTPUT_DIRECTORY = 'Recommendations'
 DATA_DIRECTORY = 'Data'
