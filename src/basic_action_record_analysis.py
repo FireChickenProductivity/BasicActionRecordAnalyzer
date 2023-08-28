@@ -339,8 +339,8 @@ class CommandInformationSet:
     
     def process_partial_chain_usage(self, record, command_chain):
         command_chain.append_command(record[command_chain.get_next_chain_index()])
-        simplified_command_chain = compute_repeat_simplified_command_chain(command_chain)
-        simplified_command_chain = compute_insert_simplified_command_chain(simplified_command_chain)
+        simplified_command_chain = compute_insert_simplified_command_chain(command_chain)
+        simplified_command_chain = compute_repeat_simplified_command_chain(simplified_command_chain)
         self.process_command_usage(simplified_command_chain)
 
     def process_chain_usage(self, record, chain, max_command_chain_considered, verbose = False):
