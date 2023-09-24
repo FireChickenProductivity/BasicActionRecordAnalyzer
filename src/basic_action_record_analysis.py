@@ -4,7 +4,7 @@ from pathlib import PurePath
 from typing import List
 import os
 
-from action_records import BasicAction, read_file_record, TalonCapture, CommandChain
+from action_records import BasicAction, read_file_record, TalonCapture, CommandChain, RecordingStart
 from text_separation import TextSeparationAnalyzer
 
 RECOMMENDATION_OUTPUT_DIRECTORY = 'Recommendations'
@@ -304,6 +304,9 @@ def basic_command_filter(command: PotentialCommandInformation):
             (command.get_number_of_actions()/command.get_average_words_dictated() < 2 or \
             command.get_number_of_actions()*math.sqrt(command.get_number_of_times_used()) > command.get_average_words_dictated())
 
+def should_command_chains_not_cross_this(record_entry) -> bool:
+    return type(record_entry) == RecordingStart
+
 class CommandInformationSet:
     def __init__(self):
         self.commands = {}
@@ -346,7 +349,9 @@ class CommandInformationSet:
     def process_chain_usage(self, record, chain, max_command_chain_considered, verbose = False):
         command_chain: CommandChain = CommandChain(None, [], chain)
         chain_target = min(len(record), chain + max_command_chain_considered)
-        for chain_ending_index in range(chain, chain_target): self.process_partial_chain_usage(record, command_chain)
+        for chain_ending_index in range(chain, chain_target): 
+            if should_command_chains_not_cross_this(record[chain_ending_index]): break
+            self.process_partial_chain_usage(record, command_chain)
         if verbose: print('chain', chain + 1, 'out of', len(record) - 1, 'target: ', chain_target - 1)
 
     @staticmethod
@@ -422,7 +427,7 @@ def read_commands_to_ignore(directory):
 
 def compute_record_without_stuff_to_ignore(directory, record):
     commands_to_ignore = read_commands_to_ignore(directory)
-    filtered_record = [command for command in record if not commands_to_ignore.contains_command_actions(command)]
+    filtered_record = [command for command in record if not command.is_command_record() or not commands_to_ignore.contains_command_actions(command)]
     return filtered_record
 
 def obtain_file_record(data_directory, input_path):
