@@ -14,6 +14,7 @@ INPUT_FILENAME = 'record.txt'
 OUTPUT_FILENAME_PREFIX = 'recommendations '
 OUTPUT_FILE_EXTENSION = '.txt'
 COMMANDS_TO_IGNORE_FILENAME = 'commands_to_ignore.txt'
+FIVE_MINUTES_IN_SECONDS = 5*60
 
 class PotentialCommandInformation:
     def __init__(self, actions):
@@ -304,8 +305,17 @@ def basic_command_filter(command: PotentialCommandInformation):
             (command.get_number_of_actions()/command.get_average_words_dictated() < 2 or \
             command.get_number_of_actions()*math.sqrt(command.get_number_of_times_used()) > command.get_average_words_dictated())
 
-def should_command_chains_not_cross_this(record_entry) -> bool:
+def is_record_entry_recording_start(record_entry) -> bool:
     return type(record_entry) == RecordingStart
+
+def is_command_after_chain_start_exceeding_time_gap_threshold(record_entry, chain_start_index, current_chain_index) -> bool:
+    return current_chain_index > chain_start_index and record_entry.is_command_record() and record_entry.is_time_information_available() \
+    and record_entry.get_seconds_since_action() > FIVE_MINUTES_IN_SECONDS
+
+def should_command_chain_not_cross_entry_at_record_index(record, chain_start_index, current_chain_index) -> bool:
+    record_entry = record[current_chain_index]
+    return is_record_entry_recording_start(record_entry) or \
+        is_command_after_chain_start_exceeding_time_gap_threshold(record_entry, chain_start_index, current_chain_index)
 
 class CommandInformationSet:
     def __init__(self):
@@ -350,7 +360,7 @@ class CommandInformationSet:
         command_chain: CommandChain = CommandChain(None, [], chain)
         chain_target = min(len(record), chain + max_command_chain_considered)
         for chain_ending_index in range(chain, chain_target): 
-            if should_command_chains_not_cross_this(record[chain_ending_index]): break
+            if should_command_chain_not_cross_entry_at_record_index(record[chain_ending_index]): break
             self.process_partial_chain_usage(record, command_chain)
         if verbose: print('chain', chain + 1, 'out of', len(record) - 1, 'target: ', chain_target - 1)
 
