@@ -119,41 +119,33 @@ class TestGeneratingCommandSetFromRecord(unittest.TestCase):
         record = generate_simple_command_record()
         command_set = create_command_information_set_from_record(record, 100)
 
-        rain_information = generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
-        copy_all_information = generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all'])
-        air_information = generate_potential_command_information_with_uses(generate_press_a_command().get_actions(), ['air'])
-        rain_copy_all_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['down', 'ctrl-a', 'ctrl-c']), ['rain copy all'])
-        rain_copy_all_air_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['down', 'ctrl-a', 'ctrl-c', 'a']), ['rain copy all air'])
-        copy_all_air_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['ctrl-a', 'ctrl-c', 'a']), ['copy all air'])
+        expected_command_information = [generate_rain_potential_command_information(), generate_copy_all_potential_command_information(), generate_air_potential_command_information(), 
+                                        generate_rain_copy_all_potential_command_information(), generate_rain_copy_all_air_potential_command_information(), 
+                                        generate_copy_all_air_potential_command_information()]
 
-        expected_command_information = [rain_information, copy_all_information, air_information, 
-                                        rain_copy_all_information, rain_copy_all_air_information, copy_all_air_information]
-        self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))
+        self._assert_command_set_matches_expected_potential_command_information(command_set, expected_command_information)
     
     def test_can_handle_record_start(self):
         record = generate_simple_command_record()
         record.insert(-1, RecordingStart())
         command_set = create_command_information_set_from_record(record, 100)
         
-        rain_information = generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
-        copy_all_information = generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all'])
-        air_information = generate_potential_command_information_with_uses(generate_press_a_command().get_actions(), ['air'])
-        rain_copy_all_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['down', 'ctrl-a', 'ctrl-c']), ['rain copy all'])
+        expected_command_information = [generate_rain_potential_command_information(), generate_copy_all_potential_command_information(),
+                                        generate_air_potential_command_information(), generate_rain_copy_all_potential_command_information()]
 
-        expected_command_information = [rain_information, copy_all_information, air_information, rain_copy_all_information]
-        self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))
+        self._assert_command_set_matches_expected_potential_command_information(command_set, expected_command_information)
 
     def test_can_handle_long_pause_before_command(self):
         record = generate_command_record_with_many_seconds_before_middle_command()
         command_set = create_command_information_set_from_record(record, 100)
 
-        rain_information = generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
-        copy_all_information = generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all'])
-        air_information = generate_potential_command_information_with_uses(generate_press_a_command().get_actions(), ['air'])
-        copy_all_air_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['ctrl-a', 'ctrl-c', 'a']), ['copy all air'])
+        expected_command_information = [generate_rain_potential_command_information(), generate_copy_all_potential_command_information(), generate_air_potential_command_information(), 
+                                        generate_copy_all_air_potential_command_information()]
 
-        expected_command_information = [rain_information, copy_all_information, air_information, copy_all_air_information]
-        self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))    
+        self._assert_command_set_matches_expected_potential_command_information(command_set, expected_command_information)    
+    
+    def _assert_command_set_matches_expected_potential_command_information(self, command_set, expected_command_information):
+        self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))
 
 class TestFindingProseInText(unittest.TestCase):
     def test_can_handle_identical_text(self):
@@ -607,6 +599,25 @@ class MakeAbstractProseRepresentationsForCommand(unittest.TestCase):
         self.assertEqual(len(actual), expected_number_of_commands)
         expected_commands = generate_two_inserts_command_chain_abstract_prose_representations()
         for index, expected in enumerate(expected_commands): assert_command_chains_match(self, actual[index], expected)
+
+def generate_rain_potential_command_information():
+    return generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
+
+def generate_copy_all_potential_command_information():
+    return generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all'])
+
+def generate_air_potential_command_information():
+    return generate_potential_command_information_with_uses(generate_press_a_command().get_actions(), ['air'])
+
+def generate_rain_copy_all_potential_command_information():
+    return generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['down', 'ctrl-a', 'ctrl-c']), ['rain copy all'])
+
+def generate_rain_copy_all_air_potential_command_information():
+    return generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['down', 'ctrl-a', 'ctrl-c', 'a']), ['rain copy all air'])
+
+def generate_copy_all_air_potential_command_information():
+    return generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['ctrl-a', 'ctrl-c', 'a']), ['copy all air'])
+
 
 def generate_no_insert_command_chain():
     no_insert_command_chain = CommandChain('this is a test ctrl-a ctrl-c', generate_copy_all_action_list(), 0, 1)
