@@ -360,7 +360,7 @@ class CommandInformationSet:
         command_chain: CommandChain = CommandChain(None, [], chain)
         chain_target = min(len(record), chain + max_command_chain_considered)
         for chain_ending_index in range(chain, chain_target): 
-            if should_command_chain_not_cross_entry_at_record_index(record[chain_ending_index]): break
+            if should_command_chain_not_cross_entry_at_record_index(record, chain, chain_ending_index): break
             self.process_partial_chain_usage(record, command_chain)
         if verbose: print('chain', chain + 1, 'out of', len(record) - 1, 'target: ', chain_target - 1)
 
