@@ -129,6 +129,31 @@ class TestGeneratingCommandSetFromRecord(unittest.TestCase):
         expected_command_information = [rain_information, copy_all_information, air_information, 
                                         rain_copy_all_information, rain_copy_all_air_information, copy_all_air_information]
         self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))
+    
+    def test_can_handle_record_start(self):
+        record = generate_simple_command_record()
+        record.insert(-1, RecordingStart())
+        command_set = create_command_information_set_from_record(record, 100)
+        
+        rain_information = generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
+        copy_all_information = generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all'])
+        air_information = generate_potential_command_information_with_uses(generate_press_a_command().get_actions(), ['air'])
+        rain_copy_all_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['down', 'ctrl-a', 'ctrl-c']), ['rain copy all'])
+
+        expected_command_information = [rain_information, copy_all_information, air_information, rain_copy_all_information]
+        self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))
+
+    def test_can_handle_long_pause_before_command(self):
+        record = generate_command_record_with_many_seconds_before_middle_command()
+        command_set = create_command_information_set_from_record(record, 100)
+
+        rain_information = generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
+        copy_all_information = generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all'])
+        air_information = generate_potential_command_information_with_uses(generate_press_a_command().get_actions(), ['air'])
+        copy_all_air_information = generate_potential_command_information_with_uses(generate_multiple_key_pressing_actions(['ctrl-a', 'ctrl-c', 'a']), ['copy all air'])
+
+        expected_command_information = [rain_information, copy_all_information, air_information, copy_all_air_information]
+        self.assertTrue(command_set_matches_expected_potential_command_information(command_set, expected_command_information))    
 
 class TestFindingProseInText(unittest.TestCase):
     def test_can_handle_identical_text(self):
@@ -652,6 +677,10 @@ def generate_simple_command_record():
     record = [generate_rain_as_down_command(), generate_copy_all_command(), generate_press_a_command()]
     return record
 
+def generate_command_record_with_many_seconds_before_middle_command():
+    record = [generate_rain_as_down_command(), generate_copy_all_command(90000000000), generate_press_a_command()]
+    return record
+
 def generate_insert_action(text: str):
     return BasicAction('insert', [text])
 
@@ -693,8 +722,8 @@ def generate_copy_all_command_chain(chain, chain_ending_index):
     copy_all_command = generate_copy_all_command()
     return CommandChain(copy_all_command.get_name(), copy_all_command.get_actions(), chain, chain_ending_index)
 
-def generate_copy_all_command():
-    return generate_multiple_key_pressing_command('copy all', generate_copy_all_keystroke_list())
+def generate_copy_all_command(seconds_since_last_action: int = None):
+    return generate_multiple_key_pressing_command('copy all', generate_copy_all_keystroke_list(), seconds_since_last_action)
 
 def generate_copy_all_action_list():
     return generate_multiple_key_pressing_actions(generate_copy_all_keystroke_list())
@@ -705,9 +734,9 @@ def generate_copy_all_keystroke_list():
 def generate_rain_as_down_command():
     return generate_key_pressing_command('rain', 'down')
 
-def generate_multiple_key_pressing_command(name: str, keystrokes):
+def generate_multiple_key_pressing_command(name: str, keystrokes, seconds_since_last_action: int = None):
     actions = generate_multiple_key_pressing_actions(keystrokes)
-    command = Command(name, actions)
+    command = Command(name, actions, seconds_since_last_action)
     return command
 
 def generate_multiple_key_pressing_actions(keystrokes):
