@@ -490,7 +490,7 @@ def get_file_input_path_from_user() -> str:
     needs_valid_path = True
     while needs_valid_path:
         path = input('Input the path to the command record:')
-        if os.path.exists(path) and os.path.splitext(path)[1] == '.txt':
+        if os.path.exists(path):
             needs_valid_path = False
         else:
             print('Please input a valid path!')
