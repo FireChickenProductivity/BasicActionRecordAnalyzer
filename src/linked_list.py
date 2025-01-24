@@ -47,3 +47,6 @@ def create_doubly_linked_list_from(iterable):
     for value in iterable:
         linked_list.add(value)
     return linked_list
+
+def create_list_from_linked_list(linked_list: DoublyLinkedList):
+    return [node.value for node in linked_list]

@@ -2,6 +2,7 @@ import unittest
 from action_records import *
 from basic_action_record_analysis import *
 from text_separation import *
+from linked_list import *
 
 class TestPotentialCommandInformation(unittest.TestCase):
     def test_potential_command_information_for_press_a_has_one_action(self):
@@ -761,6 +762,9 @@ def generate_key_pressing_command(name: str, keystroke: str):
 
 def generate_key_press_action(keystroke: str):
     return BasicAction('key', [keystroke])
+
+class TestLinkedList(unittest.TestCase):
+    pass
 
 if __name__ == '__main__':
     unittest.main()
