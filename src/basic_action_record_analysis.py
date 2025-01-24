@@ -6,7 +6,7 @@ import os
 
 from action_records import BasicAction, read_file_record, TalonCapture, CommandChain, RecordingStart
 from text_separation import TextSeparationAnalyzer
-from input_parsing import InputParameters, get_input_parameters_from_user
+from input_parsing import InputParameters, get_input_parameters_from_user, NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
 
 RECOMMENDATION_OUTPUT_DIRECTORY = 'Recommendations'
 DATA_DIRECTORY = 'Data'
@@ -474,6 +474,31 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
     sorted_recommended_commands = sorted(recommended_commands, key = lambda command: command.get_number_of_times_used(), reverse = True)
     return sorted_recommended_commands
 
+def compute_recommendations_score(record, recommendations):
+    pass
+
+#TODO: Deal with recommendations for this function with a linked list class
+def compute_best_recommendations(record, recommendation_limit, recommendations):
+    if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
+        return recommendations
+    best_recommendations = []
+    for i in range(recommendation_limit):
+        best_score = 0
+        best_recommendation_index = None
+        for index, recommendation in enumerate(recommendations):
+            best_recommendations.append(recommendation)
+            score = compute_recommendations_score(record, best_recommendations)
+            if score > best_score:
+                best_score = score
+                best_recommendation_index = index
+            best_recommendations.pop()
+        if best_score == 0:
+            break
+        else:
+            best_recommendations.append(recommendations[best_recommendation_index])
+            recommendations.pop(best_recommendation_index)
+    return best_recommendations
+        
 def generate_recommendations(recommendation_directory, data_directory, parameters: InputParameters):
     record = obtain_file_record(data_directory, parameters.input_path)
     print('finished reading record')
