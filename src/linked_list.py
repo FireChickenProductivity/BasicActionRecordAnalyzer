@@ -9,16 +9,16 @@ class DoublyLinkedList:
         self.head = None
         self.tail = None
     
-    def add(self, value):
+    def append(self, value):
         node = DoublyLinkedListNode(value)
         if self.head:
-            self.head.next = node
-            node.previous = self.head
+            self.tail.next = node
+            node.previous = self.tail
         else:
             self.head = node
         self.tail = node
 
-    def remove_node(self, node: DoublyLinkedListNode):
+    def remove(self, node: DoublyLinkedListNode):
         previous = node.previous
         next = node.next
         if previous:
@@ -29,4 +29,21 @@ class DoublyLinkedList:
             next.previous = next
         else:
             self.tail = next
-        
+
+    def get_tail(self):
+        return self.tail
+
+    def get_head(self):
+        return self.head
+
+    def __iter__(self):
+        current = self.head
+        while current:
+            yield current
+            current = current.next
+
+def create_doubly_linked_list_from(iterable):
+    linked_list = DoublyLinkedList()
+    for value in iterable:
+        linked_list.add(value)
+    return linked_list
