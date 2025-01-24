@@ -6,6 +6,7 @@ import os
 
 from action_records import BasicAction, read_file_record, TalonCapture, CommandChain, RecordingStart
 from text_separation import TextSeparationAnalyzer
+from input_parsing import InputParameters, get_input_parameters_from_user
 
 RECOMMENDATION_OUTPUT_DIRECTORY = 'Recommendations'
 DATA_DIRECTORY = 'Data'
@@ -362,7 +363,7 @@ class CommandInformationSet:
         for chain_ending_index in range(chain, chain_target): 
             if should_command_chain_not_cross_entry_at_record_index(record, chain, chain_ending_index): break
             self.process_partial_chain_usage(record, command_chain)
-        if verbose: print('chain', chain + 1, 'out of', len(record) - 1, 'target: ', chain_target - 1)
+        if verbose: print('chain', chain + 1, 'out of', len(record), 'target: ', chain_target)
 
     @staticmethod
     def compute_representation(command):
@@ -473,10 +474,10 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
     sorted_recommended_commands = sorted(recommended_commands, key = lambda command: command.get_number_of_times_used(), reverse = True)
     return sorted_recommended_commands
 
-def generate_recommendations(recommendation_directory, data_directory, input_path):
-    record = obtain_file_record(data_directory, input_path)
+def generate_recommendations(recommendation_directory, data_directory, parameters: InputParameters):
+    record = obtain_file_record(data_directory, parameters.input_path)
     print('finished reading record')
-    recommendations = compute_recommendations_from_record(record, 20, verbose = True)
+    recommendations = compute_recommendations_from_record(record, parameters.max_chain_length, verbose = True)
     print('outputting recommendations')
     output_recommendations(recommendations, recommendation_directory)
     print('completed')
@@ -485,25 +486,14 @@ def guarantee_directory_exists(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def get_file_input_path_from_user() -> str:
-    path = ''
-    needs_valid_path = True
-    while needs_valid_path:
-        path = input('Input the path to the command record:')
-        if os.path.exists(path):
-            needs_valid_path = False
-        else:
-            print('Please input a valid path!')
-    return path
-
 def main():
     program_directory = compute_main_program_directory()
     recommendation_output_directory = compute_recommendation_output_directory(program_directory)
     guarantee_directory_exists(recommendation_output_directory)
     data_directory = compute_data_directory(program_directory)
     guarantee_directory_exists(data_directory)
-    input_path = get_file_input_path_from_user()
-    generate_recommendations(recommendation_output_directory, data_directory, input_path)
+    parameters = get_input_parameters_from_user()
+    generate_recommendations(recommendation_output_directory, data_directory, parameters)
 
 if __name__ == '__main__':
     main()
