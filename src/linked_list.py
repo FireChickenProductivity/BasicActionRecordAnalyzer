@@ -24,11 +24,11 @@ class DoublyLinkedList:
         if previous:
             previous.next = next
         else:
-            self.head = previous
+            self.head = next
         if next:
             next.previous = next
         else:
-            self.tail = next
+            self.tail = previous
 
     def get_tail(self):
         return self.tail
@@ -45,7 +45,7 @@ class DoublyLinkedList:
 def create_doubly_linked_list_from(iterable):
     linked_list = DoublyLinkedList()
     for value in iterable:
-        linked_list.add(value)
+        linked_list.append(value)
     return linked_list
 
 def create_list_from_linked_list(linked_list: DoublyLinkedList):

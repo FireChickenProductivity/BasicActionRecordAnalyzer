@@ -764,7 +764,37 @@ def generate_key_press_action(keystroke: str):
     return BasicAction('key', [keystroke])
 
 class TestLinkedList(unittest.TestCase):
-    pass
+    def _assert_linked_list_matches_expected(self, linked, expected):
+        self.assertEqual(expected, create_list_from_linked_list(linked))
+
+    def test_adding_values(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        expected = [1, 2, 3]
+        self._assert_linked_list_matches_expected(linked, expected)
+
+    def test_remove_head(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        linked.remove(linked.get_head())
+        expected = [2, 3]
+        self._assert_linked_list_matches_expected(linked, expected)
+        self.assertEqual(2, linked.get_head().value)
+        self.assertEqual(3, linked.get_tail().value)
+
+    def test_remove_tail(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        linked.remove(linked.get_tail())
+        expected = [1, 2]
+        self._assert_linked_list_matches_expected(linked, expected)
+        self.assertEqual(2, linked.get_tail().value)
+        self.assertEqual(1, linked.get_head().value)
+
+    def test_remove_middle(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        linked.remove(linked.get_head().next)
+        expected = [1, 3]
+        self._assert_linked_list_matches_expected(linked, expected)
+        self.assertEqual(3, linked.get_tail().value)
+        self.assertEqual(1, linked.get_head().value)
 
 if __name__ == '__main__':
     unittest.main()
