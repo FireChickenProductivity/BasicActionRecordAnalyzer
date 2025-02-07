@@ -17,6 +17,9 @@ OUTPUT_FILE_EXTENSION = '.txt'
 COMMANDS_TO_IGNORE_FILENAME = 'commands_to_ignore.txt'
 FIVE_MINUTES_IN_SECONDS = 5*60
 
+def compute_number_of_words(named):
+    return len(named.get_name().split(" "))
+
 class PotentialCommandInformation:
     def __init__(self, actions):
         self.actions = actions
@@ -59,8 +62,10 @@ class PotentialCommandInformation:
     def process_relevant_usage(self, command_chain):
         self.number_of_times_used += 1
         self.chain = command_chain.get_chain_ending_index()
-        words = command_chain.get_name().split(' ')
-        self.total_number_of_words_dictated += len(words)
+        self.total_number_of_words_dictated += compute_number_of_words(command_chain)
+
+    def get_number_of_words_saved(self):
+        return self.get_number_of_times_used()*(self.get_average_words_dictated() - 1)
 
     def __repr__(self):
         return self.__str__()
@@ -85,22 +90,32 @@ class ActionSequenceSet:
     def get_size(self):
         return len(self.set)
 
+class AbstractCommandInstantiation:
+    def __init__(self, command_chain, concrete_command, words_saved):
+        self.command_chain = command_chain
+        self.concrete_command = concrete_command
+        self.words_saved = words_saved
 
 class PotentialAbstractCommandInformation(PotentialCommandInformation):
-    def __init__(self, actions):
+    def __init__(self, instantiation: AbstractCommandInstantiation):
         self.instantiation_set = ActionSequenceSet()
-        super().__init__(actions)
-    
-    def process_usage(self, command_chain, instantiation):
-        if self.should_process_usage(command_chain.get_chain_number()):
-            self.instantiation_set.insert(instantiation.get_actions())
-            self.process_relevant_usage(command_chain)
+        self.number_of_words_saved: int = 0
+        super().__init__(instantiation.command_chain.get_actions())
+
+    def process_usage(self, instantiation: AbstractCommandInstantiation):
+        if self.should_process_usage(instantiation.command_chain.get_chain_number()):
+            self.instantiation_set.insert(instantiation.concrete_command.get_actions())
+            self.process_relevant_usage(instantiation.command_chain)
+            self.number_of_words_saved += instantiation.words_saved
     
     def get_number_of_instantiations(self):
         return self.instantiation_set.get_size()
     
     def is_abstract(self):
         return True
+
+    def get_number_of_words_saved(self):
+        return self.number_of_words_saved
 
 def compute_repeat_simplified_command_chain(command_chain):
     new_actions = []
@@ -165,7 +180,8 @@ def make_abstract_repeat_representation_for(command_chain):
         else:
             new_actions.append(action)
     new_command = compute_command_chain_copy_with_new_name_and_actions(command_chain, new_name, new_actions)
-    return new_command
+    instantiation = AbstractCommandInstantiation(new_command, command_chain, compute_number_of_words(command_chain) - 2)
+    return instantiation
 
 def is_prose_inside_inserted_text_with_consistent_separator(prose: str, text: str) -> bool:
     text_separation_analyzer = TextSeparationAnalyzer(text)
@@ -225,7 +241,8 @@ def make_abstract_representation_for_prose_command(command_chain, match: ProseMa
     if text_after: new_actions.append(BasicAction('insert', [text_after]))
     if insert_to_modify_index + 1 < len(actions): new_actions.extend(actions[insert_to_modify_index + 1:])
     new_command = compute_command_chain_copy_with_new_name_and_actions(command_chain, match.name, new_actions)
-    return new_command
+    instantiation = AbstractCommandInstantiation(new_command, command_chain, compute_number_of_words(new_command) - 2)
+    return instantiation
 
 class InsertAction:
     def __init__(self, text: str, index: int):
@@ -285,7 +302,8 @@ def make_abstract_prose_representations_for_command_given_insert(command_chain, 
     prose_matches = find_prose_matches_for_command_given_insert(command_chain, insert, max_prose_size_to_consider)
     for match in prose_matches:
         abstract_representation = make_abstract_representation_for_prose_command(command_chain, match, insert.index)
-        if is_acceptable_abstract_representation(abstract_representation): abstract_representations.append(abstract_representation)
+        if is_acceptable_abstract_representation(abstract_representation.command_chain):
+            abstract_representations.append(abstract_representation)
     return abstract_representations
 
 def make_abstract_prose_representations_for_command_given_inserts(command_chain, inserts, max_prose_size_to_consider):
@@ -325,11 +343,11 @@ class CommandInformationSet:
     def insert_command(self, command, representation):
         self.commands[representation] = command
     
-    def process_abstract_command_usage(self, command_chain, abstract_command_chain):
-        representation = CommandInformationSet.compute_representation(abstract_command_chain)
+    def process_abstract_command_usage(self, instantiation: AbstractCommandInstantiation):
+        representation = CommandInformationSet.compute_representation(instantiation.command_chain)
         if representation not in self.commands:
-            self.insert_command(PotentialAbstractCommandInformation(abstract_command_chain.get_actions()), representation)
-        self.commands[representation].process_usage(abstract_command_chain, command_chain)
+            self.insert_command(PotentialAbstractCommandInformation(instantiation), representation)
+        self.commands[representation].process_usage(instantiation)
 
     def create_abstract_commands(self, command_chain):
         commands = []
@@ -342,7 +360,7 @@ class CommandInformationSet:
     
     def handle_needed_abstract_commands(self, command_chain):
         abstract_commands = self.create_abstract_commands(command_chain)
-        for abstract_command in abstract_commands: self.process_abstract_command_usage(command_chain, abstract_command)
+        for abstract_command in abstract_commands: self.process_abstract_command_usage(abstract_command)
 
     def process_command_usage(self, command_chain):
         representation = CommandInformationSet.compute_representation(command_chain)
@@ -446,8 +464,9 @@ def obtain_file_record(data_directory, input_path):
     filtered_record = compute_record_without_stuff_to_ignore(data_directory, record)
     return filtered_record
 
-def write_command_to_file(file, command):
+def write_command_to_file(file, command: PotentialCommandInformation):
     file.write(f'#Number of times used: {command.get_number_of_times_used()}\n')
+    file.write(f'#Number of words saved: {command.get_number_of_words_saved()}\n')
     if command.is_abstract(): file.write(f'#Number of instantiations of abstract command: {command.get_number_of_instantiations()}\n')
     for action in command.get_actions(): file.write('\t' + action.compute_talon_script() + '\n')
     file.write('\n\n')
@@ -474,8 +493,11 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
     sorted_recommended_commands = sorted(recommended_commands, key = lambda command: command.get_number_of_times_used(), reverse = True)
     return sorted_recommended_commands
 
-def compute_recommendations_score(record, recommendations):
-    pass
+def compute_recommendations_score(record, recommendations: list[PotentialCommandInformation]):
+    score = 0
+    for command in recommendations:
+        pass
+        
 
 #TODO: Deal with recommendations for this function with a linked list class
 def compute_best_recommendations(record, recommendation_limit, recommendations):
