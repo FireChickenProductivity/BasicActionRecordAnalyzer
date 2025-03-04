@@ -493,14 +493,31 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
     sorted_recommended_commands = sorted(recommended_commands, key = lambda command: command.get_number_of_times_used(), reverse = True)
     return sorted_recommended_commands
 
-def compute_recommendations_score(record, recommendations: list[PotentialCommandInformation]):
-    score = 0
-    for command in recommendations:
-        pass
-        
 
-#TODO: Deal with recommendations for this function with a linked list class
-def compute_best_recommendations(record, recommendation_limit, recommendations):
+
+def compute_recommendations_score(recommendations: list[PotentialCommandInformation]):
+    score = 0
+    action_sequences = {}
+    for command in recommendations:
+        score += command.get_number_of_words_saved()
+        action_sequences[compute_string_representation_of_actions(command.get_actions())] = command
+    for sequence in action_sequences:
+        command: PotentialCommandInformation = action_sequences[sequence]
+        actions = command.get_actions()
+        for i in range(len(actions)):
+            for j in range(i + 1, len(actions)):
+                if i != 0 or j != len(actions) - 1:
+                    sub_actions = actions[i:j + 1]
+                    subsequence = compute_string_representation_of_actions(sub_actions)
+                    if subsequence in action_sequences:
+                        smaller_command = action_sequences[subsequence]
+                        overlap = smaller_command.get_number_of_words_saved()*command.get_number_of_times_used()
+                        score -= overlap
+    return score
+
+#TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
+#Try to optimize to not need repeatedly recomputing the action representations
+def compute_best_recommendations(recommendation_limit, recommendations):
     if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
         return recommendations
     best_recommendations = []
@@ -509,7 +526,7 @@ def compute_best_recommendations(record, recommendation_limit, recommendations):
         best_recommendation_index = None
         for index, recommendation in enumerate(recommendations):
             best_recommendations.append(recommendation)
-            score = compute_recommendations_score(record, best_recommendations)
+            score = compute_recommendations_score(best_recommendations)
             if score > best_score:
                 best_score = score
                 best_recommendation_index = index
