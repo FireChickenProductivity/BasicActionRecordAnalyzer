@@ -90,6 +90,10 @@ class ActionSequenceSet:
     def get_size(self):
         return len(self.set)
 
+    def __iter__(self):
+        for sequence in self.set:
+            yield sequence
+
 class AbstractCommandInstantiation:
     def __init__(self, command_chain, concrete_command, words_saved):
         self.command_chain = command_chain
@@ -116,6 +120,9 @@ class PotentialAbstractCommandInformation(PotentialCommandInformation):
 
     def get_number_of_words_saved(self):
         return self.number_of_words_saved
+
+    def get_instantiation_set(self):
+        return self.instantiation_set
 
 def compute_repeat_simplified_command_chain(command_chain):
     new_actions = []
@@ -514,6 +521,13 @@ def compute_recommendations_score(recommendations: list[PotentialCommandInformat
                         #For every instance of the bigger command, the smaller command was present so subtract the number of words that we thought the smaller command had saved during those instances of the bigger command
                         overlap = smaller_command.get_number_of_words_saved()*command.get_number_of_times_used()
                         score -= overlap
+        if command.is_abstract():
+            concrete_instantiation_set: ActionSequenceSet = command.get_instantiation_set()
+            for sequence in concrete_instantiation_set:
+                if sequence in action_sequences:
+                    concrete_command = action_sequences[sequence]
+                    overlap = command.get_number_of_words_saved()*concrete_command.command.get_number_of_times_used()
+                    score -= overlap
     return score
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
