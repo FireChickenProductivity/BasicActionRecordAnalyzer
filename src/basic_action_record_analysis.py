@@ -511,6 +511,7 @@ def compute_recommendations_score(recommendations: list[PotentialCommandInformat
                     subsequence = compute_string_representation_of_actions(sub_actions)
                     if subsequence in action_sequences:
                         smaller_command = action_sequences[subsequence]
+                        #For every instance of the bigger command, the smaller command was present so subtract the number of words that we thought the smaller command had saved during those instances of the bigger command
                         overlap = smaller_command.get_number_of_words_saved()*command.get_number_of_times_used()
                         score -= overlap
     return score
