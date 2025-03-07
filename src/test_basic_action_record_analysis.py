@@ -695,6 +695,16 @@ class TestScoringRecommendations(unittest.TestCase):
         expected = 14.0
         self._assert_score_matches_expected(commands, expected)
 
+    def test_abstract_overlapping_with_concrete(self):
+        copy_all_command = generate_copy_all_potential_command_with_uses(["copy all"]*2)
+        commands = [ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND, ABSTRACT_FUNCTION_DEFINITION_COMMAND, copy_all_command]
+        expected = 6.0 + 2.0 - 1.0*2
+        self._assert_score_matches_expected(commands, expected)
+
+    def test_overlapping_abstract_commands(self):
+        commands = [ABSTRACT_FUNCTION_DEFINITION_COMMAND, ABSTRACT_FUNCTION_DEFINITION_WITH_PARENTHESES_COMMAND]
+        expected = 4.0 + 3.0 - 2.0
+        self._assert_score_matches_expected(commands, expected)
 
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
@@ -906,6 +916,10 @@ FUNCTION_DEFINITION_COMMAND = Command("define function name", [generate_insert_a
 ANOTHER_FUNCTION_DEFINITION_COMMAND = Command("define yet another function name", [generate_insert_action("def yet_another_function_name")])
 ABSTRACT_FUNCTION_DEFINITION_COMMAND_FACTORY = AbstractCommandInstantiationFactory("public function here <user.text>", [generate_insert_action("def "), create_abstract_snake_case_action()])
 ABSTRACT_FUNCTION_DEFINITION_COMMAND = ABSTRACT_FUNCTION_DEFINITION_COMMAND_FACTORY.create_abstract_command_information_from_commands([FUNCTION_DEFINITION_COMMAND, ANOTHER_FUNCTION_DEFINITION_COMMAND])
+
+FUNCTION_DEFINITION_WITH_PARENTHESES_COMMAND = Command("define function name args", [generate_insert_action("def function_name()"), generate_key_press_action("left")])
+ABSTRACT_FUNCTION_DEFINITION_WITH_PARENTHESES_COMMAND_FACTORY = AbstractCommandInstantiationFactory("public function here <user.text> args", [generate_insert_action("def "), create_abstract_snake_case_action(), generate_insert_action("()"), generate_key_press_action("left")])
+ABSTRACT_FUNCTION_DEFINITION_WITH_PARENTHESES_COMMAND = ABSTRACT_FUNCTION_DEFINITION_WITH_PARENTHESES_COMMAND_FACTORY.create_abstract_command_information_from_commands([FUNCTION_DEFINITION_WITH_PARENTHESES_COMMAND])
 
 if __name__ == '__main__':
     unittest.main()
