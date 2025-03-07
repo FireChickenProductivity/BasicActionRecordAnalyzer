@@ -503,32 +503,62 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
 
+def compute_action_subsequences(actions):
+    for i in range(len(actions)):
+        for j in range(i + 1, len(actions)):
+            if i != 0 or j != len(actions) - 1:
+                sub_actions = actions[i:j + 1]
+                subsequence = compute_string_representation_of_actions(sub_actions)
+                yield subsequence
+
+class AbstractRecommendationInformation:
+    """Holds information associated with an abstract command recommendation useful for tracking overlap with other commands"""
+    def __init__(self, abstract_command_information: PotentialAbstractCommandInformation):
+        self.abstract_command_information = abstract_command_information
+        self.concrete_instantiations: set[str] = set()
+        self.concrete_sequences: set[str] = set()
+
+    def add_instantiation(self, instantiation: str, actions):
+        self.concrete_instantiations.add(instantiation)
+        for subsequence in compute_action_subsequences(actions):
+            self.concrete_sequences.add(subsequence)
+
+    def get_number_of_non_concrete_occurrences(self) -> int:
+        return self.abstract_command_information.get_number_of_instantiations() - len(self.concrete_instantiations)
+
+    def get_command(self):
+        return self.abstract_command_information
+
 def compute_recommendations_score(recommendations: list[PotentialCommandInformation]):
     score = 0
     action_sequences = {}
+    abstract_information: dict[str, AbstractRecommendationInformation] = {}
+    concrete_sequences = []
     for command in recommendations:
-        score += command.get_number_of_words_saved()
-        action_sequences[compute_string_representation_of_actions(command.get_actions())] = command
+        representation = compute_string_representation_of_actions(command.get_actions())
+        action_sequences[representation] = command
+        if command.is_abstract():
+            abstract_information[representation] = AbstractRecommendationInformation(command)
+        else:
+            score += command.get_number_of_words_saved()
+            concrete_sequences.append(representation)
+    for concrete_sequence in concrete_sequences:
+        for abstract_sequence in abstract_information:
+            corresponding_abstract_information = abstract_information[abstract_sequence]
+            if concrete_sequence in corresponding_abstract_information.get_command().get_instantiation_set():
+                corresponding_abstract_information.add_instantiation(concrete_sequence, action_sequences[concrete_sequence].get_actions())
+    for sequence in abstract_information:
+        relevant_information = abstract_information[sequence]
+        score += relevant_information.get_number_of_non_concrete_occurrences()*compute_words_saved_per_use(relevant_information.get_command())
     for sequence in action_sequences:
         command: PotentialCommandInformation = action_sequences[sequence]
         actions = command.get_actions()
-        for i in range(len(actions)):
-            for j in range(i + 1, len(actions)):
-                if i != 0 or j != len(actions) - 1:
-                    sub_actions = actions[i:j + 1]
-                    subsequence = compute_string_representation_of_actions(sub_actions)
-                    if subsequence in action_sequences:
-                        smaller_command = action_sequences[subsequence]
-                        #For every instance of the bigger command, the smaller command was present so subtract the number of words that we thought the smaller command had saved during those instances of the bigger command
-                        overlap = compute_words_saved_per_use(smaller_command)*command.get_number_of_times_used()
-                        score -= overlap
-        if command.is_abstract():
-            concrete_instantiation_set: ActionSequenceSet = command.get_instantiation_set()
-            for sequence in concrete_instantiation_set:
-                if sequence in action_sequences:
-                    concrete_command = action_sequences[sequence]
-                    overlap = compute_words_saved_per_use(command)*concrete_command.get_number_of_times_used()
-                    score -= overlap
+        for subsequence in compute_action_subsequences(actions):
+            if subsequence in action_sequences:
+                smaller_command = action_sequences[subsequence]
+                #For every instance of the bigger command, the smaller command was present so subtract the number of words that we thought the smaller command had saved during those instances of the bigger command
+                overlap = compute_words_saved_per_use(smaller_command)*command.get_number_of_times_used()
+                score -= overlap
     return score
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
