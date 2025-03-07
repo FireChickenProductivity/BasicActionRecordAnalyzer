@@ -706,6 +706,11 @@ class TestScoringRecommendations(unittest.TestCase):
         expected = 4.0 + 3.0 - 2.0
         self._assert_score_matches_expected(commands, expected)
 
+    def test_abstract_overlapping_with_concrete_instantiation(self):
+        commands = [SNAKE_CASE_COPY_ALL_POTENTIAL_COMMAND_INFORMATION, ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND]
+        expected = 4 + 2.0 - 1.0
+        self._assert_score_matches_expected(commands, expected)
+
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
         self.abstract_name = abstract_name
@@ -908,6 +913,10 @@ def generate_key_press_action(keystroke: str):
 
 #Defining some abstract commands for testing purposes
 SNAKE_CASE_COPY_ALL_COMMAND = Command("copy all snake test this", generate_copy_all_action_list() + [generate_insert_action("test_this")])
+SNAKE_CASE_COPY_ALL_POTENTIAL_COMMAND_INFORMATION = PotentialCommandInformation(SNAKE_CASE_COPY_ALL_COMMAND.get_actions())
+SNAKE_CASE_COPY_ALL_POTENTIAL_COMMAND_INFORMATION.process_usage(
+    CommandChain(SNAKE_CASE_COPY_ALL_COMMAND.get_name(), SNAKE_CASE_COPY_ALL_COMMAND.get_actions())
+)
 LONGER_SNAKE_CASE_COPY_ALL_COMMAND = Command("copy all snake another test again", generate_copy_all_action_list() + [generate_insert_action("another_test_again")])
 ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND_FACTORY = AbstractCommandInstantiationFactory("copy all <user.text>", generate_copy_all_action_list() + [create_abstract_snake_case_action()])
 ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND = ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND_FACTORY.create_abstract_command_information_from_commands([SNAKE_CASE_COPY_ALL_COMMAND, LONGER_SNAKE_CASE_COPY_ALL_COMMAND])

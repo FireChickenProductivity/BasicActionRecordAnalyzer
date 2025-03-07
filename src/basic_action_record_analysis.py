@@ -527,7 +527,7 @@ def compute_recommendations_score(recommendations: list[PotentialCommandInformat
             for sequence in concrete_instantiation_set:
                 if sequence in action_sequences:
                     concrete_command = action_sequences[sequence]
-                    overlap = compute_words_saved_per_use(command.get_number_of_words_saved())*concrete_command.command.get_number_of_times_used()
+                    overlap = compute_words_saved_per_use(command)*concrete_command.get_number_of_times_used()
                     score -= overlap
     return score
 
