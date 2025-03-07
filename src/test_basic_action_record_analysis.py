@@ -687,7 +687,6 @@ class TestScoringRecommendations(unittest.TestCase):
         abstract_command = factory.create_abstract_command_information_from_commands([snake_case_command, another_snake_case_command])
         commands = [abstract_command]
         expected = 2.0
-        print(abstract_command.get_number_of_words_saved(), abstract_command.actions)
         self._assert_score_matches_expected(commands, expected)
 
 class AbstractCommandInstantiationFactory:
