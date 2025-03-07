@@ -666,8 +666,8 @@ class TestScoringRecommendations(unittest.TestCase):
 
     def test_multiple_commands_without_overlap_get_counted_correctly(self):
         commands = [
-            generate_copy_all_potential_command_with_uses("copy all"*3),
-            generate_go_bottom_potential_command_with_uses("go way down")
+            generate_copy_all_potential_command_with_uses(["copy all"]*3),
+            generate_go_bottom_potential_command_with_uses(["go way down"])
         ]
         expected = 5.0
         self._assert_score_matches_expected(commands, expected)
@@ -689,6 +689,12 @@ class TestScoringRecommendations(unittest.TestCase):
         commands = [ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND, ABSTRACT_FUNCTION_DEFINITION_COMMAND]
         expected = 6.0
         self._assert_score_matches_expected(commands, expected)
+
+    def test_abstract_with_not_abstract_without_overlap(self):
+        commands = [ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND, ABSTRACT_FUNCTION_DEFINITION_COMMAND, generate_go_bottom_potential_command_with_uses(["go way down"]*4)]
+        expected = 14.0
+        self._assert_score_matches_expected(commands, expected)
+
 
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
