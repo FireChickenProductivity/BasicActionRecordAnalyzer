@@ -680,6 +680,16 @@ class TestScoringRecommendations(unittest.TestCase):
         expected = 4.0
         self._assert_score_matches_expected(commands, expected)
 
+    def test_abstract_only(self):
+        pass
+        
+def create_abstract_command_information(instantiations: list[AbstractCommandInstantiation]):
+    firstInstantiation = instantiations[0]
+    info = PotentialAbstractCommandInformation(firstInstantiation)
+    for i in range(1, len(instantiations) - 1):
+        info.process_usage(instantiations[i])
+    return info
+
 def generate_go_bottom_potential_command_with_uses(uses):
     actions = [BasicAction("key", "ctrl-end")]
     return generate_potential_command_information_with_uses(actions, uses)
@@ -736,6 +746,9 @@ def generate_two_inserts_command_chain_abstract_prose_representations():
 def generate_test_insert_action():
     action = generate_insert_action('this is a test')
     return action
+
+def create_abstract_snake_case_action():
+    return generate_abstract_prose_action("snake", "_")
 
 def generate_abstract_prose_action(case_string: str, first_prose_separator: str):
     prose_argument = TalonCapture('user.text', 1)
