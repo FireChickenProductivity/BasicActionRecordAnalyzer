@@ -681,12 +681,13 @@ class TestScoringRecommendations(unittest.TestCase):
         self._assert_score_matches_expected(commands, expected)
 
     def test_abstract_only(self):
-        snake_case_command = Command("copy all snake test this", generate_copy_all_action_list() + [generate_insert_action("test_this")])
-        another_snake_case_command = Command("copy all snake another test again", generate_copy_all_action_list() + [generate_insert_action("another_test_again")])
-        factory = AbstractCommandInstantiationFactory("copy all <user.text>", generate_copy_all_action_list() + [create_abstract_snake_case_action()])
-        abstract_command = factory.create_abstract_command_information_from_commands([snake_case_command, another_snake_case_command])
-        commands = [abstract_command]
+        commands = [ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND]
         expected = 2.0
+        self._assert_score_matches_expected(commands, expected)
+
+    def test_multiple_abstract_commands_without_overlap(self):
+        commands = [ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND, ABSTRACT_FUNCTION_DEFINITION_COMMAND]
+        expected = 6.0
         self._assert_score_matches_expected(commands, expected)
 
 class AbstractCommandInstantiationFactory:
@@ -889,10 +890,16 @@ def generate_key_pressing_command(name: str, keystroke: str):
 def generate_key_press_action(keystroke: str):
     return BasicAction('key', [keystroke])
 
+#Defining some abstract commands for testing purposes
+SNAKE_CASE_COPY_ALL_COMMAND = Command("copy all snake test this", generate_copy_all_action_list() + [generate_insert_action("test_this")])
+LONGER_SNAKE_CASE_COPY_ALL_COMMAND = Command("copy all snake another test again", generate_copy_all_action_list() + [generate_insert_action("another_test_again")])
+ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND_FACTORY = AbstractCommandInstantiationFactory("copy all <user.text>", generate_copy_all_action_list() + [create_abstract_snake_case_action()])
+ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND = ABSTRACT_COPY_ALL_SNAKE_CASE_COMMAND_FACTORY.create_abstract_command_information_from_commands([SNAKE_CASE_COPY_ALL_COMMAND, LONGER_SNAKE_CASE_COPY_ALL_COMMAND])
 
-
-    
-
+FUNCTION_DEFINITION_COMMAND = Command("define function name", [generate_insert_action("def function_name")])
+ANOTHER_FUNCTION_DEFINITION_COMMAND = Command("define yet another function name", [generate_insert_action("def yet_another_function_name")])
+ABSTRACT_FUNCTION_DEFINITION_COMMAND_FACTORY = AbstractCommandInstantiationFactory("public function here <user.text>", [generate_insert_action("def "), create_abstract_snake_case_action()])
+ABSTRACT_FUNCTION_DEFINITION_COMMAND = ABSTRACT_FUNCTION_DEFINITION_COMMAND_FACTORY.create_abstract_command_information_from_commands([FUNCTION_DEFINITION_COMMAND, ANOTHER_FUNCTION_DEFINITION_COMMAND])
 
 if __name__ == '__main__':
     unittest.main()
