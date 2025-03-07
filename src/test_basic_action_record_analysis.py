@@ -613,7 +613,72 @@ class MakeAbstractProseRepresentationsForCommand(unittest.TestCase):
         self.assertEqual(len(actual), expected_number_of_commands)
         expected_commands = generate_two_inserts_command_chain_abstract_prose_representations()
         for index, expected in enumerate(expected_commands): assert_command_chains_match(self, actual[index], expected)
+class TestLinkedList(unittest.TestCase):
+    def _assert_linked_list_matches_expected(self, linked, expected):
+        self.assertEqual(expected, create_list_from_linked_list(linked))
 
+    def test_adding_values(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        expected = [1, 2, 3]
+        self._assert_linked_list_matches_expected(linked, expected)
+
+    def test_remove_head(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        linked.remove(linked.get_head())
+        expected = [2, 3]
+        self._assert_linked_list_matches_expected(linked, expected)
+        self.assertEqual(2, linked.get_head().value)
+        self.assertEqual(3, linked.get_tail().value)
+
+    def test_remove_tail(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        linked.remove(linked.get_tail())
+        expected = [1, 2]
+        self._assert_linked_list_matches_expected(linked, expected)
+        self.assertEqual(2, linked.get_tail().value)
+        self.assertEqual(1, linked.get_head().value)
+
+    def test_remove_middle(self):
+        linked = create_doubly_linked_list_from([1, 2, 3])
+        linked.remove(linked.get_head().next)
+        expected = [1, 3]
+        self._assert_linked_list_matches_expected(linked, expected)
+        self.assertEqual(3, linked.get_tail().value)
+        self.assertEqual(1, linked.get_head().value)
+
+class TestScoringRecommendations(unittest.TestCase):
+    def _assert_score_matches_expected(self, recommendations, expected):
+        actual = compute_recommendations_score(recommendations)
+        self.assertAlmostEqual(expected, actual)
+
+    def test_nothing_gets_scored_zero(self):
+        self._assert_score_matches_expected([], 0)
+
+    def test_single_command_gets_counted_correctly(self):
+        command = generate_copy_all_potential_command_information()
+        expected = 1.0
+        self._assert_score_matches_expected([command], expected)
+
+    def test_single_command_with_multiple_uses_gets_counted_correctly(self):
+        command = generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), ['copy all', 'multiple uses'])
+        expected = 2.0
+        self._assert_score_matches_expected([command], expected)
+
+    def test_multiple_commands_without_overlap_get_counted_correctly(self):
+        commands = [
+            generate_copy_all_potential_command_with_uses("copy all"*3),
+            generate_go_bottom_potential_command_with_uses("go way down")
+        ]
+        expected = 5.0
+        self._assert_score_matches_expected(commands, expected)
+
+def generate_go_bottom_potential_command_with_uses(uses):
+    actions = [BasicAction("key", "ctrl-end")]
+    return generate_potential_command_information_with_uses(actions, uses)
+
+def generate_copy_all_potential_command_with_uses(uses):
+    return generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), uses)
+        
 def generate_rain_potential_command_information():
     return generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
 
@@ -776,46 +841,7 @@ def generate_key_pressing_command(name: str, keystroke: str):
 def generate_key_press_action(keystroke: str):
     return BasicAction('key', [keystroke])
 
-class TestLinkedList(unittest.TestCase):
-    def _assert_linked_list_matches_expected(self, linked, expected):
-        self.assertEqual(expected, create_list_from_linked_list(linked))
 
-    def test_adding_values(self):
-        linked = create_doubly_linked_list_from([1, 2, 3])
-        expected = [1, 2, 3]
-        self._assert_linked_list_matches_expected(linked, expected)
-
-    def test_remove_head(self):
-        linked = create_doubly_linked_list_from([1, 2, 3])
-        linked.remove(linked.get_head())
-        expected = [2, 3]
-        self._assert_linked_list_matches_expected(linked, expected)
-        self.assertEqual(2, linked.get_head().value)
-        self.assertEqual(3, linked.get_tail().value)
-
-    def test_remove_tail(self):
-        linked = create_doubly_linked_list_from([1, 2, 3])
-        linked.remove(linked.get_tail())
-        expected = [1, 2]
-        self._assert_linked_list_matches_expected(linked, expected)
-        self.assertEqual(2, linked.get_tail().value)
-        self.assertEqual(1, linked.get_head().value)
-
-    def test_remove_middle(self):
-        linked = create_doubly_linked_list_from([1, 2, 3])
-        linked.remove(linked.get_head().next)
-        expected = [1, 3]
-        self._assert_linked_list_matches_expected(linked, expected)
-        self.assertEqual(3, linked.get_tail().value)
-        self.assertEqual(1, linked.get_head().value)
-
-class TestScoringRecommendations(unittest.TestCase):
-    def _assert_score_matches_expected(self, recommendations, expected):
-        actual = compute_recommendations_score(recommendations)
-        self.assertEqual(expected, actual)
-
-    def test_nothing_gets_scored_zero(self):
-        self._assert_score_matches_expected([], 0)
 
     
 
