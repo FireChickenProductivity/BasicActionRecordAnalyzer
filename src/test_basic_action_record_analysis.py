@@ -467,7 +467,7 @@ class TestMakeAbstractRepresentationForProseCommand(unittest.TestCase):
         analyzer.search_for_prose_in_separated_part(prose)
         new_name = 'name'
         match = ProseMatch(analyzer, new_name)
-        actual = make_abstract_representation_for_prose_command(command_chain, match, insert_to_modify_index)
+        actual = make_abstract_representation_for_prose_command(command_chain, match, insert_to_modify_index).command_chain
         expected_with_new_name = compute_command_chain_copy_with_new_name_and_actions(expected, new_name, expected.get_actions())
         assert_command_chains_match(self, actual, expected_with_new_name)
 
@@ -549,54 +549,67 @@ class TestFindProseMatchesForCommandGivenInsert(unittest.TestCase):
         self.assertEqual(actual_text_before, expected_text_before)
         self.assertEqual(actual_text_after, expected_text_after)
 
+def convert_abstract_command_instantiations_to_chains(instantiations):
+    return [i.command_chain for i in instantiations]
+
+def make_abstract_prose_chains_for_command_given_inserts(command_chain, inserts, max_prose_size_to_consider=TEST_MAX_PROSE_SIZE_TO_CONSIDER):
+    instantiations = make_abstract_prose_representations_for_command_given_inserts(command_chain, inserts, max_prose_size_to_consider)
+    result = convert_abstract_command_instantiations_to_chains(instantiations)
+    return result
+
 class TestMakeAbstractProseRepresentationsForCommandGivenInserts(unittest.TestCase):
     def test_handles_no_inserts(self):
         no_insert_command_chain = generate_no_insert_command_chain()
         expected = []
-        actual = make_abstract_prose_representations_for_command_given_inserts(no_insert_command_chain, [], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_command_given_inserts(no_insert_command_chain, [], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(actual, expected)
     
     def test_handles_one_insert(self):
         one_insert_command_chain = generate_single_insert_command_chain()
         expected_command_chain = generate_single_insert_command_chain_abstract_prose_representation()
         expected_number_of_commands = 1
-        actual = make_abstract_prose_representations_for_command_given_inserts(one_insert_command_chain, [InsertAction('test', 0)], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_command_given_inserts(one_insert_command_chain, [InsertAction('test', 0)], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(len(actual), expected_number_of_commands)
         assert_command_chains_match(self, actual[0], expected_command_chain)
     
     def test_returns_nothing_with_single_prose_action_only(self):
         single_prose_action_only_command_chain = CommandChain('say test', [generate_insert_action('test')], 0, 1)
         expected = []
-        actual = make_abstract_prose_representations_for_command_given_inserts(single_prose_action_only_command_chain, [InsertAction('test', 0)], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_command_given_inserts(single_prose_action_only_command_chain, [InsertAction('test', 0)], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(actual, expected)
     
     def test_handles_two_inserts(self):
         two_inserts_command_chain = CommandChain('this is a test', [generate_insert_action('this is'), generate_press_a_action(), generate_insert_action('a test')], 0, 1)
         expected_number_of_commands = 6
-        actual = make_abstract_prose_representations_for_command_given_inserts(two_inserts_command_chain, [InsertAction('this is', 0), InsertAction('a test', 2)], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_command_given_inserts(two_inserts_command_chain, [InsertAction('this is', 0), InsertAction('a test', 2)], TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(len(actual), expected_number_of_commands)
         expected_commands = generate_two_inserts_command_chain_abstract_prose_representations()
         for index, expected in enumerate(expected_commands): assert_command_chains_match(self, actual[index], expected)
+
+def make_abstract_prose_chains_for_commands(command_chain, max_prose_size=TEST_MAX_PROSE_SIZE_TO_CONSIDER):
+    representations = make_abstract_prose_representations_for_command(command_chain, max_prose_size)
+    result = convert_abstract_command_instantiations_to_chains(representations)
+    return result
 
 class MakeAbstractProseRepresentationsForCommand(unittest.TestCase):
     def test_handles_no_inserts(self):
         no_insert_command_chain = generate_no_insert_command_chain()
         expected = []
-        actual = make_abstract_prose_representations_for_command(no_insert_command_chain, TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_commands(no_insert_command_chain, TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(actual, expected)
     
     def test_handles_one_insert(self):
         one_insert_command_chain = generate_single_insert_command_chain()
         expected_command_chain = generate_single_insert_command_chain_abstract_prose_representation()
         expected_number_of_commands = 1
-        actual = make_abstract_prose_representations_for_command(one_insert_command_chain, TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_commands(one_insert_command_chain, TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(len(actual), expected_number_of_commands)
         assert_command_chains_match(self, actual[0], expected_command_chain)
 
     def test_handles_two_inserts(self):
         two_inserts_command_chain = generate_two_inserts_command_chain()
         expected_number_of_commands = 6
-        actual = make_abstract_prose_representations_for_command(two_inserts_command_chain, TEST_MAX_PROSE_SIZE_TO_CONSIDER)
+        actual = make_abstract_prose_chains_for_commands(two_inserts_command_chain, TEST_MAX_PROSE_SIZE_TO_CONSIDER)
         self.assertEqual(len(actual), expected_number_of_commands)
         expected_commands = generate_two_inserts_command_chain_abstract_prose_representations()
         for index, expected in enumerate(expected_commands): assert_command_chains_match(self, actual[index], expected)
@@ -795,6 +808,17 @@ class TestLinkedList(unittest.TestCase):
         self._assert_linked_list_matches_expected(linked, expected)
         self.assertEqual(3, linked.get_tail().value)
         self.assertEqual(1, linked.get_head().value)
+
+class TestScoringRecommendations(unittest.TestCase):
+    def _assert_score_matches_expected(self, recommendations, expected):
+        actual = compute_recommendations_score(recommendations)
+        self.assertEqual(expected, actual)
+
+    def test_nothing_gets_scored_zero(self):
+        self._assert_score_matches_expected([], 0)
+
+    
+
 
 if __name__ == '__main__':
     unittest.main()
