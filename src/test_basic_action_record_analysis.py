@@ -687,6 +687,7 @@ class TestScoringRecommendations(unittest.TestCase):
         abstract_command = factory.create_abstract_command_information_from_commands([snake_case_command, another_snake_case_command])
         commands = [abstract_command]
         expected = 2.0
+        print(abstract_command.get_number_of_words_saved(), abstract_command.actions)
         self._assert_score_matches_expected(commands, expected)
 
 class AbstractCommandInstantiationFactory:
@@ -704,6 +705,7 @@ class AbstractCommandInstantiationFactory:
         chain: CommandChain = CommandChain(self.abstract_name, self.abstract_actions, self.chain_number, 1)
         words_saved = compute_number_of_words(chain) - 2
         instantiation = AbstractCommandInstantiation(chain, command, words_saved)
+        self.chain_number += 1
         return instantiation
 
     def create_abstract_command_information(self, instantiations: list[AbstractCommandInstantiation]):
@@ -712,8 +714,8 @@ class AbstractCommandInstantiationFactory:
 def create_abstract_command_information(instantiations: list[AbstractCommandInstantiation]):
     firstInstantiation = instantiations[0]
     info = PotentialAbstractCommandInformation(firstInstantiation)
-    for i in range(1, len(instantiations) - 1):
-        info.process_usage(instantiations[i])
+    for instantiation in instantiations:
+        info.process_usage(instantiation)
     return info
 
 def generate_go_bottom_potential_command_with_uses(uses):
