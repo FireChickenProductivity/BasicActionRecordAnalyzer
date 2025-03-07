@@ -500,7 +500,8 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
     sorted_recommended_commands = sorted(recommended_commands, key = lambda command: command.get_number_of_times_used(), reverse = True)
     return sorted_recommended_commands
 
-
+def compute_words_saved_per_use(command: PotentialCommandInformation):
+    return command.get_number_of_words_saved()/command.get_number_of_times_used()
 
 def compute_recommendations_score(recommendations: list[PotentialCommandInformation]):
     score = 0
@@ -519,14 +520,14 @@ def compute_recommendations_score(recommendations: list[PotentialCommandInformat
                     if subsequence in action_sequences:
                         smaller_command = action_sequences[subsequence]
                         #For every instance of the bigger command, the smaller command was present so subtract the number of words that we thought the smaller command had saved during those instances of the bigger command
-                        overlap = smaller_command.get_number_of_words_saved()*command.get_number_of_times_used()
+                        overlap = compute_words_saved_per_use(smaller_command)*command.get_number_of_times_used()
                         score -= overlap
         if command.is_abstract():
             concrete_instantiation_set: ActionSequenceSet = command.get_instantiation_set()
             for sequence in concrete_instantiation_set:
                 if sequence in action_sequences:
                     concrete_command = action_sequences[sequence]
-                    overlap = command.get_number_of_words_saved()*concrete_command.command.get_number_of_times_used()
+                    overlap = compute_words_saved_per_use(command.get_number_of_words_saved())*concrete_command.command.get_number_of_times_used()
                     score -= overlap
     return score
 

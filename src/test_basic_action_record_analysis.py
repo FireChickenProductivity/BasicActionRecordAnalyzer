@@ -672,6 +672,14 @@ class TestScoringRecommendations(unittest.TestCase):
         expected = 5.0
         self._assert_score_matches_expected(commands, expected)
 
+    def test_single_overlap_gets_counted_correctly(self):
+        commands = [
+            generate_copy_all_potential_command_with_uses(["copy all"]*3), #1*3
+            generate_rain_copy_all_potential_command_information(), #2
+        ]
+        expected = 4.0
+        self._assert_score_matches_expected(commands, expected)
+
 def generate_go_bottom_potential_command_with_uses(uses):
     actions = [BasicAction("key", "ctrl-end")]
     return generate_potential_command_information_with_uses(actions, uses)
