@@ -681,8 +681,34 @@ class TestScoringRecommendations(unittest.TestCase):
         self._assert_score_matches_expected(commands, expected)
 
     def test_abstract_only(self):
-        pass
-        
+        snake_case_command = Command("copy all snake test this", generate_copy_all_action_list() + [generate_insert_action("test_this")])
+        another_snake_case_command = Command("copy all snake another test again", generate_copy_all_action_list() + [generate_insert_action("another_test_again")])
+        factory = AbstractCommandInstantiationFactory("copy all <user.text>", generate_copy_all_action_list() + [create_abstract_snake_case_action()])
+        abstract_command = factory.create_abstract_command_information_from_commands([snake_case_command, another_snake_case_command])
+        commands = [abstract_command]
+        expected = 2.0
+        self._assert_score_matches_expected(commands, expected)
+
+class AbstractCommandInstantiationFactory:
+    def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
+        self.abstract_name = abstract_name
+        self.abstract_actions = abstract_actions
+        self.chain_number = 0
+    
+    def create_abstract_command_information_from_commands(self, commands: list[Command]):
+        instantiations = [self.create_instantiation(command) for command in commands]
+        result = self.create_abstract_command_information(instantiations)
+        return result
+
+    def create_instantiation(self, command: Command) -> AbstractCommandInstantiation:
+        chain: CommandChain = CommandChain(self.abstract_name, self.abstract_actions, self.chain_number, 1)
+        words_saved = compute_number_of_words(chain) - 2
+        instantiation = AbstractCommandInstantiation(chain, command, words_saved)
+        return instantiation
+
+    def create_abstract_command_information(self, instantiations: list[AbstractCommandInstantiation]):
+        return create_abstract_command_information(instantiations)
+
 def create_abstract_command_information(instantiations: list[AbstractCommandInstantiation]):
     firstInstantiation = instantiations[0]
     info = PotentialAbstractCommandInformation(firstInstantiation)
