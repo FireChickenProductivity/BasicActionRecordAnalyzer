@@ -529,27 +529,51 @@ class AbstractRecommendationInformation:
     def get_command(self):
         return self.abstract_command_information
 
-def compute_recommendations_score(recommendations: list[PotentialCommandInformation]):
-    score = 0
-    action_sequences = {}
+def _compute_recommendations_sequences(recommendations: list[PotentialCommandInformation]):
+    action_sequences: dict[str, PotentialCommandInformation] = {}
     abstract_information: dict[str, AbstractRecommendationInformation] = {}
-    concrete_sequences = []
+    concrete_sequences: list[str] = []
     for command in recommendations:
         representation = compute_string_representation_of_actions(command.get_actions())
         action_sequences[representation] = command
         if command.is_abstract():
             abstract_information[representation] = AbstractRecommendationInformation(command)
         else:
-            score += command.get_number_of_words_saved()
             concrete_sequences.append(representation)
+    return action_sequences, abstract_information, concrete_sequences
+
+def _accumulate_instantiation_information_for_abstract_sequences(
+    action_sequences: dict[str, PotentialCommandInformation],
+    abstract_information: dict[str, AbstractRecommendationInformation],
+    concrete_sequences: list[str]
+    ):
     for concrete_sequence in concrete_sequences:
         for abstract_sequence in abstract_information:
             corresponding_abstract_information = abstract_information[abstract_sequence]
             if concrete_sequence in corresponding_abstract_information.get_command().get_instantiation_set():
                 corresponding_abstract_information.add_instantiation(concrete_sequence, action_sequences[concrete_sequence].get_actions())
+
+def _compute_concrete_recommendations_score_ignoring_overlap(
+    action_sequences: dict[str, PotentialCommandInformation],
+    concrete_sequences: list[str]
+    ) -> int:
+    score: int = 0
+    for c in concrete_sequences: score += action_sequences[c].get_number_of_words_saved()
+    return score
+
+def _compute_abstract_recommendations_score_ignoring_overlap(
+    abstract_information: dict[str, AbstractRecommendationInformation]
+) -> int:
+    score = 0
     for sequence in abstract_information:
         relevant_information = abstract_information[sequence]
         score += relevant_information.get_number_of_non_concrete_occurrences()*compute_words_saved_per_use(relevant_information.get_command())
+    return score
+
+def _compute_recommendations_score_overlap(
+    action_sequences: dict[str, PotentialCommandInformation]
+) -> int:
+    overlap = 0
     for sequence in action_sequences:
         command: PotentialCommandInformation = action_sequences[sequence]
         actions = command.get_actions()
@@ -557,9 +581,37 @@ def compute_recommendations_score(recommendations: list[PotentialCommandInformat
             if subsequence in action_sequences:
                 smaller_command = action_sequences[subsequence]
                 #For every instance of the bigger command, the smaller command was present so subtract the number of words that we thought the smaller command had saved during those instances of the bigger command
-                overlap = compute_words_saved_per_use(smaller_command)*command.get_number_of_times_used()
-                score -= overlap
+                overlap += compute_words_saved_per_use(smaller_command)*command.get_number_of_times_used()
+    return overlap
+
+def _compute_recommendations_score_ignoring_overlap(
+    action_sequences: dict[str, PotentialCommandInformation],
+    abstract_information: dict[str, AbstractRecommendationInformation],
+    concrete_sequences: list[str]
+) -> int:
+    concrete_score: int = _compute_concrete_recommendations_score_ignoring_overlap(
+        action_sequences,
+        concrete_sequences
+    )
+    abstract_score: int = _compute_abstract_recommendations_score_ignoring_overlap(abstract_information)
+    score: int = concrete_score + abstract_score
     return score
+
+def compute_recommendations_score(recommendations: list[PotentialCommandInformation]):
+    action_sequences, abstract_information, concrete_sequences = _compute_recommendations_sequences(recommendations)
+    _accumulate_instantiation_information_for_abstract_sequences(
+        action_sequences,
+        abstract_information,
+        concrete_sequences
+    )
+    score: int = _compute_recommendations_score_ignoring_overlap(
+        action_sequences,
+        abstract_information,
+        concrete_sequences
+    )
+    overlap: int = _compute_recommendations_score_overlap(action_sequences)
+    result: int = score - overlap
+    return result
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
