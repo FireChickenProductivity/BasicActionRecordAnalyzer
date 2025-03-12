@@ -711,6 +711,20 @@ class TestScoringRecommendations(unittest.TestCase):
         expected = 4 + 2.0 - 1.0
         self._assert_score_matches_expected(commands, expected)
 
+    def test_overlap_shared_with_abstract_and_concrete(self):
+        #copy al, select al, copy, abstract
+        copy_all_uses = ["copy that all"]*5
+        copy_all_command = generate_copy_all_potential_command_with_uses(copy_all_uses)
+        select_all_command = generate_select_all_potential_command_with_uses(["select all"]*2)
+        commands = [
+            copy_all_command,
+            select_all_command,
+        ]
+        expected = 5*2 + 2*1 - 2*2
+        print('select_all_command', select_all_command)
+        print('copy_all_command', copy_all_command)
+        self._assert_score_matches_expected(commands, expected)
+
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
         self.abstract_name = abstract_name
@@ -745,7 +759,11 @@ def generate_go_bottom_potential_command_with_uses(uses):
 
 def generate_copy_all_potential_command_with_uses(uses):
     return generate_potential_command_information_with_uses(generate_copy_all_command().get_actions(), uses)
-        
+
+def generate_select_all_potential_command_with_uses(uses):
+    actions = [generate_key_press_action('ctrl-a')]
+    return generate_potential_command_information_with_uses(actions, uses)
+
 def generate_rain_potential_command_information():
     return generate_potential_command_information_with_uses(generate_rain_as_down_command().get_actions(), ['rain'])
 
