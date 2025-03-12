@@ -721,9 +721,24 @@ class TestScoringRecommendations(unittest.TestCase):
             select_all_command,
         ]
         expected = 5*2 + 2*1 - 2*2
-        print('select_all_command', select_all_command)
-        print('copy_all_command', copy_all_command)
         self._assert_score_matches_expected(commands, expected)
+
+class TestComputingActionSubsequences(unittest.TestCase):
+    def _assert_actions_give_expected_subsequences(self, actions, expected):
+        actual = yield from compute_action_subsequences(actions)
+        self.assertEqual(expected, actual)
+
+    def test_nothing_for_single_action(self):
+        expected = []
+        actions = [generate_insert_action('single')]
+        self._assert_actions_give_expected_subsequences(actions, expected)
+
+    def test_two_actions_gives_the_first_one(self):
+        actions = [generate_insert_action('single'), generate_insert_action('second')]
+        expected = [compute_string_representation_of_actions([actions[0]])]
+        self._assert_actions_give_expected_subsequences(actions, expected)
+
+
 
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
