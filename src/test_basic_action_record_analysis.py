@@ -711,8 +711,7 @@ class TestScoringRecommendations(unittest.TestCase):
         expected = 4 + 2.0 - 1.0
         self._assert_score_matches_expected(commands, expected)
 
-    def test_overlap_shared_with_abstract_and_concrete(self):
-        #copy al, select al, copy, abstract
+    def test_simple_concrete_overlap(self):
         copy_all_uses = ["copy that all"]*5
         copy_all_command = generate_copy_all_potential_command_with_uses(copy_all_uses)
         select_all_command = generate_select_all_potential_command_with_uses(["select all"]*2)
@@ -720,8 +719,12 @@ class TestScoringRecommendations(unittest.TestCase):
             copy_all_command,
             select_all_command,
         ]
-        expected = 5*2 + 2*1 - 2*2
+        expected = 5*2 + 2*1 - 1*5
         self._assert_score_matches_expected(commands, expected)
+
+    def test_overlap_shared_with_abstract_and_concrete(self):
+        #copy all, select all, copy, abstract
+        pass
 
 class TestComputingActionSubsequences(unittest.TestCase):
     def _assert_actions_give_expected_subsequences(self, actions, expected):

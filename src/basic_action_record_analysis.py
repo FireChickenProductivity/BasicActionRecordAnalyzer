@@ -503,7 +503,7 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
 
-def compute_number_of_elements_in_range(start, final):
+def compute_number_of_elements_in_range(start: int, final: int) -> int:
     return final - start + 1
 
 def compute_action_subsequences(actions):
