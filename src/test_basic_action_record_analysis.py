@@ -725,7 +725,7 @@ class TestScoringRecommendations(unittest.TestCase):
 
 class TestComputingActionSubsequences(unittest.TestCase):
     def _assert_actions_give_expected_subsequences(self, actions, expected):
-        actual = yield from compute_action_subsequences(actions)
+        actual = [e for e in compute_action_subsequences(actions)]
         self.assertEqual(expected, actual)
 
     def test_nothing_for_single_action(self):
@@ -733,12 +733,12 @@ class TestComputingActionSubsequences(unittest.TestCase):
         actions = [generate_insert_action('single')]
         self._assert_actions_give_expected_subsequences(actions, expected)
 
-    def test_two_actions_gives_the_first_one(self):
+    def test_two_actions_gives_both(self):
         actions = [generate_insert_action('single'), generate_insert_action('second')]
-        expected = [compute_string_representation_of_actions([actions[0]])]
+        expected = [compute_string_representation_of_actions([action])
+                    for action in actions
+                    ]
         self._assert_actions_give_expected_subsequences(actions, expected)
-
-
 
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):

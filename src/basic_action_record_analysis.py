@@ -503,10 +503,13 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
 
+def compute_number_of_elements_in_range(start, final):
+    return final - start + 1
+
 def compute_action_subsequences(actions):
     for i in range(len(actions)):
-        for j in range(i + 1, len(actions)):
-            if i != 0 or j != len(actions) - 1:
+        for j in range(i, len(actions)):
+            if compute_number_of_elements_in_range(i, j) < len(actions):
                 sub_actions = actions[i:j + 1]
                 subsequence = compute_string_representation_of_actions(sub_actions)
                 yield subsequence
