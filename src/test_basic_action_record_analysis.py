@@ -740,6 +740,20 @@ class TestComputingActionSubsequences(unittest.TestCase):
                     ]
         self._assert_actions_give_expected_subsequences(actions, expected)
 
+    def test_handles_three_actions(self):
+        actions = [
+            generate_insert_action(text)
+            for text in ['first', 'second', 'third']
+        ]
+        expected = [
+            compute_string_representation_of_actions([actions[0]]),
+            compute_string_representation_of_actions(actions[0:2]),
+            compute_string_representation_of_actions([actions[1]]),
+            compute_string_representation_of_actions(actions[1:3]),
+            compute_string_representation_of_actions([actions[2]]),
+        ]
+        self._assert_actions_give_expected_subsequences(actions, expected)
+
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
         self.abstract_name = abstract_name
