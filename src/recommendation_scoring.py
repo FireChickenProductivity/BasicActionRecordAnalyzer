@@ -133,3 +133,38 @@ def compute_best_recommendations(recommendation_limit, recommendations):
             best_recommendations.append(recommendations[best_recommendation_index])
             recommendations.pop(best_recommendation_index)
     return best_recommendations
+
+def _compute_number_of_commands_including_action(recommendations: list[PotentialCommandInformation]) -> dict[str, int]:
+    result = {}
+    for recommendation in recommendations:
+        unique_actions = set(
+            [compute_string_representation_of_actions([action])
+             for action in recommendation.get_actions()
+             ]
+        )
+        for unique_action in unique_actions:
+            result[unique_action] += 1
+    return result
+
+def _score_recommendations_weighting_by_inverse_action_frequency(
+    recommendations: list[PotentialCommandInformation],
+    num_commands_including_action: dict[str, int]
+):
+    score = 0
+    for recommendation in recommendations:
+        actions = recommendation.get_actions()
+        weight = 0
+        for action in actions:
+            representation = compute_string_representation_of_actions([action])
+            weight += 1/(num_commands_including_action[representation])
+        weight /= len(actions)
+        score += weight*recommendation.get_number_of_words_saved()
+    return score
+
+def compute_heuristic_recommendation_score(recommendations: list[PotentialCommandInformation]):
+    num_commands_including_action = _compute_number_of_commands_including_action(recommendations)
+    return _score_recommendations_weighting_by_inverse_action_frequency(
+        recommendations,
+        num_commands_including_action
+    )
+    
