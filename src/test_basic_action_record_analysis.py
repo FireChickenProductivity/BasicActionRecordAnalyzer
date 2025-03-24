@@ -3,6 +3,7 @@ from action_records import *
 from basic_action_record_analysis import *
 from text_separation import *
 from linked_list import *
+from recommendation_scoring import *
 
 class TestPotentialCommandInformation(unittest.TestCase):
     def test_potential_command_information_for_press_a_has_one_action(self):
