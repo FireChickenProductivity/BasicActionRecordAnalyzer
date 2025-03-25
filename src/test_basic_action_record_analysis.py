@@ -786,6 +786,16 @@ class TestHeuristicScoring(unittest.TestCase):
         expected = 5.0*2.0*((1 + 1/2)/2) + 2.0*1.0*(1/2.0)
         self._assert_score_is_expected(commands, expected)
 
+    def test_multiple_overlap_and_non_overlapping(self):
+        copy_all_command = generate_copy_all_potential_command_with_uses(["copy that all"]*4)
+        select_all_command = generate_select_all_potential_command_with_uses(["select all"]*3)
+        go_bottom_command = generate_go_bottom_potential_command_with_uses(["go to the bottom"]*3)
+        #saves 2 words, 1 push uses
+        rain_copy_all_command = generate_rain_copy_all_potential_command_information()
+        commands = [copy_all_command, select_all_command, go_bottom_command, rain_copy_all_command]
+        expected = 3.0*3.0 + 3.0*1.0*(1/3) + 4.0*2.0*((1/3 + 1/2)/2) + 1.0*2.0*((1 + 1/3 + 1/2)/3)
+        self._assert_score_is_expected(commands, expected)
+
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
         self.abstract_name = abstract_name
