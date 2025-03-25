@@ -758,6 +758,34 @@ class TestComputingActionSubsequences(unittest.TestCase):
         ]
         self._assert_actions_give_expected_subsequences(actions, expected)
 
+class TestHeuristicScoring(unittest.TestCase):
+    def _assert_score_is_expected(self, recommendations, expected: float):
+        actual = compute_heuristic_recommendation_score(recommendations)
+        self.assertEqual(expected, actual)
+
+    def test_nothing_gives_score_zero(self):
+        self._assert_score_is_expected([], 0.0)
+
+    def test_single_command_gives_words_saved(self):
+        copy_all_uses = ["copy that all"]*5
+        copy_all_command = generate_copy_all_potential_command_with_uses(copy_all_uses)
+        expected = 5.0 * 2.0
+        self._assert_score_is_expected([copy_all_command], expected)
+    
+    def test_no_overlap_gives_words_saved(self):
+        copy_all_command = generate_copy_all_potential_command_with_uses(["copy that all"]*5)
+        go_bottom_command = generate_go_bottom_potential_command_with_uses(["go to the bottom"]*3)
+        commands = [copy_all_command, go_bottom_command]
+        expected = 5.0*2.0 + 3.0*3.0
+        self._assert_score_is_expected(commands, expected)
+
+    def test_overlap_handled_properly(self):
+        copy_all_command = generate_copy_all_potential_command_with_uses(["copy that all"]*5)
+        select_all_command = generate_select_all_potential_command_with_uses(["select all"]*2)
+        commands = [copy_all_command, select_all_command]
+        expected = 5.0*2.0*((1 + 1/2)/2) + 2.0*1.0*(1/2.0)
+        self._assert_score_is_expected(commands, expected)
+
 class AbstractCommandInstantiationFactory:
     def __init__(self, abstract_name: str, abstract_actions: list[BasicAction]):
         self.abstract_name = abstract_name

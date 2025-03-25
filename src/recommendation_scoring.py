@@ -1,5 +1,6 @@
 from recommendation_generation import PotentialCommandInformation, compute_string_representation_of_actions, PotentialAbstractCommandInformation 
 from input_parsing import NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
+from collections import Counter
 
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
@@ -135,7 +136,7 @@ def compute_best_recommendations(recommendation_limit, recommendations):
     return best_recommendations
 
 def _compute_number_of_commands_including_action(recommendations: list[PotentialCommandInformation]) -> dict[str, int]:
-    result = {}
+    result = Counter()
     for recommendation in recommendations:
         unique_actions = set(
             [compute_string_representation_of_actions([action])
@@ -149,8 +150,8 @@ def _compute_number_of_commands_including_action(recommendations: list[Potential
 def _score_recommendations_weighting_by_inverse_action_frequency(
     recommendations: list[PotentialCommandInformation],
     num_commands_including_action: dict[str, int]
-):
-    score = 0
+) -> float:
+    score = 0.0
     for recommendation in recommendations:
         actions = recommendation.get_actions()
         weight = 0
@@ -161,7 +162,7 @@ def _score_recommendations_weighting_by_inverse_action_frequency(
         score += weight*recommendation.get_number_of_words_saved()
     return score
 
-def compute_heuristic_recommendation_score(recommendations: list[PotentialCommandInformation]):
+def compute_heuristic_recommendation_score(recommendations: list[PotentialCommandInformation]) -> float:
     num_commands_including_action = _compute_number_of_commands_including_action(recommendations)
     return _score_recommendations_weighting_by_inverse_action_frequency(
         recommendations,
