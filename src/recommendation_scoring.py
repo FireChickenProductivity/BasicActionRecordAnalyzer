@@ -112,29 +112,6 @@ def compute_recommendations_score(recommendations: list[PotentialCommandInformat
     assert result >= 0
     return result
 
-#TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
-#Try to optimize to not need repeatedly recomputing the action representations
-def compute_best_recommendations(recommendation_limit, recommendations):
-    if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
-        return recommendations
-    best_recommendations = []
-    for i in range(recommendation_limit):
-        best_score = 0
-        best_recommendation_index = None
-        for index, recommendation in enumerate(recommendations):
-            best_recommendations.append(recommendation)
-            score = compute_recommendations_score(best_recommendations)
-            if score > best_score:
-                best_score = score
-                best_recommendation_index = index
-            best_recommendations.pop()
-        if best_score == 0:
-            break
-        else:
-            best_recommendations.append(recommendations[best_recommendation_index])
-            recommendations.pop(best_recommendation_index)
-    return best_recommendations
-
 def _compute_number_of_commands_including_action(recommendations: list[PotentialCommandInformation]) -> dict[str, int]:
     result = Counter()
     for recommendation in recommendations:
@@ -168,4 +145,26 @@ def compute_heuristic_recommendation_score(recommendations: list[PotentialComman
         recommendations,
         num_commands_including_action
     )
-    
+
+#TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
+#Try to optimize to not need repeatedly recomputing the action representations
+def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score):
+    if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
+        return recommendations
+    best_recommendations = []
+    for _ in range(recommendation_limit):
+        best_score = 0
+        best_recommendation_index = None
+        for index, recommendation in enumerate(recommendations):
+            best_recommendations.append(recommendation)
+            score = compute_heuristic_recommendation_score(best_recommendations)
+            if score > best_score:
+                best_score = score
+                best_recommendation_index = index
+            best_recommendations.pop()
+        if best_score == 0:
+            break
+        else:
+            best_recommendations.append(recommendations[best_recommendation_index])
+            recommendations.pop(best_recommendation_index)
+    return best_recommendations

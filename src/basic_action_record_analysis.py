@@ -3,8 +3,9 @@ from pathlib import PurePath
 import os
 
 from action_records import BasicAction, read_file_record
-from input_parsing import InputParameters, get_input_parameters_from_user
+from input_parsing import InputParameters, get_input_parameters_from_user, NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
 from recommendation_generation import *
+from recommendation_scoring import compute_best_recommendations
 
 RECOMMENDATION_OUTPUT_DIRECTORY = 'Recommendations'
 DATA_DIRECTORY = 'Data'
@@ -100,6 +101,12 @@ def generate_recommendations(recommendation_directory, data_directory, parameter
     record = obtain_file_record(data_directory, parameters.input_path)
     print('finished reading record')
     recommendations = compute_recommendations_from_record(record, parameters.max_chain_length, verbose = True)
+    if parameters.max_number_of_recommendations != NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
+        print('identifying the best', parameters.max_number_of_recommendations, 'recommendations')
+        recommendations = compute_best_recommendations(
+            parameters.max_number_of_recommendations,
+            recommendations,
+        )
     print('outputting recommendations')
     output_recommendations(recommendations, recommendation_directory)
     print('completed')
