@@ -146,11 +146,31 @@ def compute_heuristic_recommendation_score(recommendations: list[PotentialComman
         num_commands_including_action
     )
 
+def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
+    #For every command that is a shorter version of another command but is not used any more times: remove it
+    action_sequences: dict[str, PotentialCommandInformation] = {}
+    for command in recommendations:
+        representation = compute_string_representation_of_actions(command.get_actions())
+        action_sequences[representation] = command
+    to_remove = set()
+    for sequence in action_sequences:
+        command = action_sequences[sequence]
+        for sub_sequence in compute_action_subsequences(command.get_actions()):
+            if sub_sequence in action_sequences and \
+                action_sequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
+                to_remove.add(sub_sequence)
+    for sequence in to_remove:
+        action_sequences.pop(sequence)
+    result = [action_sequences[s] for s in action_sequences]
+    return result
+
+
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score):
     if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
         return recommendations
+    recommendations = filter_out_recommendations_using_safe_heuristics(recommendation_limit, recommendations)
     best_recommendations = []
     for _ in range(recommendation_limit):
         best_score = 0
