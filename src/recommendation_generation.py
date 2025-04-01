@@ -146,6 +146,7 @@ def compute_insert_simplified_command_chain(command_chain):
     return new_command
 
 def compute_string_representation_of_actions(actions):
+    """Adding the string representations of separate lists of actions together should yield the same representation as the union of those lists"""
     representation = ''
     for action in actions:
         representation += action.to_json()

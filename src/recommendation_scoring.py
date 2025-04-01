@@ -2,7 +2,7 @@ from recommendation_generation import PotentialCommandInformation, compute_strin
 from input_parsing import NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
 from collections import Counter
 from action_records import BasicAction
-from action_utilities import create_insert_action, is_insert
+from action_utilities import create_insert_action, is_insert, get_insert_text
 
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
@@ -154,6 +154,61 @@ def compute_heuristic_recommendation_score(recommendations: list[PotentialComman
         num_commands_including_action
     )
 
+def _append_insert_subsequences(collection: list, action: BasicAction):
+    inserted_text = get_insert_text(action)
+    for s in compute_string_subsequences(inserted_text):
+        action = create_insert_action(s)
+        rep = compute_string_representation_of_actions([action])
+        collection.append(rep)
+
+def _append_insert_subsequences_with_multiple_actions(
+    collection: list[str],
+    sub_actions: list[BasicAction]
+):
+    """This assumes that there is more than one action"""
+    beginning_inserts: list[str]
+    ending_inserts: list[str]
+    if is_insert(sub_actions[0]):
+        beginning_inserts = []
+        inserted_text = get_insert_text(sub_actions[0])
+        if len(inserted_text) > 1:
+            for i in range(len(inserted_text) - 1):
+                beginning_inserts.append(inserted_text[:i])
+    if is_insert(sub_actions[-1]):
+        ending_inserts = []
+        inserted_text = get_insert_text(sub_actions[-1])
+        if len(inserted_text) > 1:
+            for i in range(1, len(inserted_text)):
+                ending_inserts.append(inserted_text[i:])
+    if is_insert(sub_actions[0]) and not is_insert(sub_actions[-1]):
+        other_representation = compute_string_representation_of_actions(sub_actions[1:])
+        for s in beginning_inserts:
+            s_rep = compute_string_representation_of_actions(
+                [create_insert_action(s)]
+            )
+            collection.append(s_rep + other_representation)
+    elif is_insert(sub_actions[-1]) and not is_insert(sub_actions[0]):
+        other_representation = compute_string_representation_of_actions(sub_actions[:-1])
+        for s in ending_inserts:
+            s_rep = compute_string_representation_of_actions(
+                [create_insert_action(s)]
+            )
+            collection.append(other_representation + s_rep)
+    elif is_insert(sub_actions[0]) and is_insert(sub_actions[-1]):
+        other_representation = compute_string_representation_of_actions(sub_actions[0:-1])
+        beginning_inserts.append(get_insert_text(sub_actions[0]))
+        ending_inserts.append(get_insert_text(sub_actions[-1]))
+        for b in beginning_inserts:
+            b_rep = compute_string_representation_of_actions(
+                [create_insert_action(b)]
+            )
+            for e in ending_inserts:
+                e_rep = compute_string_representation_of_actions(
+                    [create_insert_action(e)]
+                )
+                collection.append(b_rep + other_representation + e_rep)
+
+
 def compute_action_subsequences_including_leading_and_trailing_inserts(
     actions: list[BasicAction]
 ):
@@ -164,23 +219,9 @@ def compute_action_subsequences_including_leading_and_trailing_inserts(
             if compute_number_of_elements_in_range(i, j) < len(actions):
                 subsequences.append(compute_string_representation_of_actions(sub_actions))
             if len(sub_actions) == 1 and is_insert(sub_actions[0]):
-                #Consider every subsequence
-                inserted_text = sub_actions[0].get_arguments()[0]
-                for s in compute_string_subsequences(inserted_text):
-                    action = create_insert_action(s)
-                    rep = compute_string_representation_of_actions([action])
-                    subsequences.append(rep)
-            # else:
-            #     #Because I am doing so much string concatenation here
-            #     #this is costly and could be optimized later
-            #     beginning_inserts = []
-            #     ending_inserts = []
-            #     if sub_actions[0].get_name() == "insert":
-            #         inserted_text = sub_actions[0].get_arguments()[0]
-            #         original_sub_action = sub_actions[0]
-            #         if len(inserted_text) > 1:
-            #             for i in range(len(inserted_text) - 1):
-            #                 beginning_inserts.append(inserted_text)
+                _append_insert_subsequences(subsequences, sub_actions[0])
+            elif len(sub_actions) > 1:
+                _append_insert_subsequences_with_multiple_actions(subsequences, sub_actions)
             
             for subsequence in subsequences:
                 yield subsequence

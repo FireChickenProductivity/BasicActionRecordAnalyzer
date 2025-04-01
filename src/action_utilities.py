@@ -5,3 +5,6 @@ def is_insert(action: BasicAction) -> bool:
 
 def create_insert_action(text: str) -> BasicAction:
     return BasicAction("insert", [text])
+
+def get_insert_text(action: BasicAction) -> str:
+    return action.get_arguments()[0]
