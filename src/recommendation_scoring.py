@@ -262,7 +262,7 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         best_recommendation_index = None
         for index, recommendation in enumerate(recommendations):
             best_recommendations.append(recommendation)
-            score = compute_heuristic_recommendation_score(best_recommendations)
+            score = scoring_function(best_recommendations)
             if score > best_score:
                 best_score = score
                 best_recommendation_index = index
