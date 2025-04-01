@@ -817,6 +817,182 @@ class AbstractCommandInstantiationFactory:
     def create_abstract_command_information(self, instantiations: list[AbstractCommandInstantiation]):
         return create_abstract_command_information(instantiations)
 
+class TestComputingActionSubsequencesIncludingTrailingAndLeadingInsert(unittest.TestCase):
+    def _assert_actions_give_expected(self, actions: list[BasicAction], expected: list[list[BasicAction]]):
+        actual = set([r for r in compute_action_subsequences_including_leading_and_trailing_inserts(actions)])
+        expected_representations = set([
+            compute_string_representation_of_actions(l) for l in expected
+        ])
+        self.assertEqual(expected_representations, actual)
+
+    def test_without_inserts(self):
+        actions = [
+            generate_key_press_action("a"),
+            generate_key_press_action("b"),
+            generate_key_press_action("c")
+        ]
+        expected = [
+            [generate_key_press_action("a")], 
+            [generate_key_press_action("b")],
+            [generate_key_press_action("c")],
+            [
+                generate_key_press_action("a"),
+                generate_key_press_action("b")
+            ],
+            [
+                generate_key_press_action("b"),
+                generate_key_press_action("c")
+            ],
+        ]
+        self._assert_actions_give_expected(actions, expected)
+
+    def test_insert_only(self):
+        actions = [generate_insert_action("abc")]
+        expected = [
+            [generate_insert_action("a")],
+            [generate_insert_action("ab")],
+            [generate_insert_action("bc")],
+            [generate_insert_action("b")],
+            [generate_insert_action("c")],
+        ]
+        self._assert_actions_give_expected(actions, expected)
+
+    def test_leading_insert(self):
+        actions = [
+            generate_insert_action("abc"),
+            generate_key_press_action("a")
+        ]
+        expected = [
+            [generate_insert_action("abc")],
+            [generate_insert_action("bc")],
+            [generate_insert_action("c")],
+            [generate_insert_action("a")],
+            [generate_insert_action("b")],
+            [generate_insert_action("ab")],
+            [generate_key_press_action("a")],
+
+            [
+                generate_insert_action("bc"),
+                generate_key_press_action("a")
+            ],
+            [
+                generate_insert_action("c"),
+                generate_key_press_action("a")
+            ]
+        ]
+        self._assert_actions_give_expected(actions, expected)
+
+    def test_trailing_insert(self):
+        actions = [
+            generate_key_press_action("a"),
+            generate_insert_action("abc"),
+        ]
+        expected = [
+            [generate_insert_action("abc")],
+            [generate_insert_action("bc")],
+            [generate_insert_action("c")],
+            [generate_insert_action("a")],
+            [generate_insert_action("b")],
+            [generate_insert_action("ab")],
+            [generate_key_press_action("a")],
+            [
+                generate_key_press_action("a"),
+                generate_insert_action("ab"),
+            ],
+            [
+                generate_key_press_action("a"),
+                generate_insert_action("a"),
+            ]
+        ]
+        self._assert_actions_give_expected(actions, expected)
+
+    def test_leading_and_trailing_insert(self):
+        actions = [
+            generate_insert_action("abc"),
+            generate_key_press_action("a"),
+            generate_insert_action("def"),
+        ]
+        expected = [
+            [generate_insert_action("abc")],
+            [generate_key_press_action("a")],
+            [generate_insert_action("def")],
+            [generate_insert_action("ab")],
+            [generate_insert_action("bc")],
+            [generate_insert_action("a")],
+            [generate_insert_action("b")],
+            [generate_insert_action("c")],
+            [generate_insert_action("de")],
+            [generate_insert_action("ef")],
+            [generate_insert_action("d")],
+            [generate_insert_action("e")],
+            [generate_insert_action("f")],
+            [
+                generate_insert_action("bc"),
+                generate_key_press_action("a"),
+            ],
+            [
+                generate_insert_action("c"),
+                generate_key_press_action("a"),
+            ],
+            [
+                generate_insert_action("abc"),
+                generate_key_press_action("a"),
+            ],
+            [
+                generate_key_press_action("a"),
+                generate_insert_action("def"),
+            ],
+            [
+                generate_key_press_action("a"),
+                generate_insert_action("de"),
+            ],
+            [
+                generate_key_press_action("a"),
+                generate_insert_action("d"),
+            ],
+            [
+                generate_insert_action("abc"),
+                generate_key_press_action("a"),
+                generate_insert_action("d"),
+            ],
+            [
+                generate_insert_action("abc"),
+                generate_key_press_action("a"),
+                generate_insert_action("de"),
+            ],
+            [
+                generate_insert_action("bc"),
+                generate_key_press_action("a"),
+                generate_insert_action("def"),
+            ],
+            [
+                generate_insert_action("c"),
+                generate_key_press_action("a"),
+                generate_insert_action("def"),
+            ],
+            [
+                generate_insert_action("bc"),
+                generate_key_press_action("a"),
+                generate_insert_action("de"),
+            ],
+            [
+                generate_insert_action("bc"),
+                generate_key_press_action("a"),
+                generate_insert_action("d"),
+            ],
+            [
+                generate_insert_action("c"),
+                generate_key_press_action("a"),
+                generate_insert_action("de"),
+            ],
+            [
+                generate_insert_action("c"),
+                generate_key_press_action("a"),
+                generate_insert_action("d"),
+            ]
+        ]
+        self._assert_actions_give_expected(actions, expected)
+
 def create_abstract_command_information(instantiations: list[AbstractCommandInstantiation]):
     firstInstantiation = instantiations[0]
     info = PotentialAbstractCommandInformation(firstInstantiation)

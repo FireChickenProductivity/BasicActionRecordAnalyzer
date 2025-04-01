@@ -172,14 +172,14 @@ def _append_insert_subsequences_with_multiple_actions(
         beginning_inserts = []
         inserted_text = get_insert_text(sub_actions[0])
         if len(inserted_text) > 1:
-            for i in range(len(inserted_text) - 1):
-                beginning_inserts.append(inserted_text[:i])
+            for i in range(1, len(inserted_text)):
+                beginning_inserts.append(inserted_text[i:])
     if is_insert(sub_actions[-1]):
         ending_inserts = []
         inserted_text = get_insert_text(sub_actions[-1])
         if len(inserted_text) > 1:
             for i in range(1, len(inserted_text)):
-                ending_inserts.append(inserted_text[i:])
+                ending_inserts.append(inserted_text[0:i])
     if is_insert(sub_actions[0]) and not is_insert(sub_actions[-1]):
         other_representation = compute_string_representation_of_actions(sub_actions[1:])
         for s in beginning_inserts:
@@ -195,19 +195,19 @@ def _append_insert_subsequences_with_multiple_actions(
             )
             collection.append(other_representation + s_rep)
     elif is_insert(sub_actions[0]) and is_insert(sub_actions[-1]):
-        other_representation = compute_string_representation_of_actions(sub_actions[0:-1])
+        other_representation = compute_string_representation_of_actions(sub_actions[1:-1])
         beginning_inserts.append(get_insert_text(sub_actions[0]))
         ending_inserts.append(get_insert_text(sub_actions[-1]))
-        for b in beginning_inserts:
+        for i, b in enumerate(beginning_inserts):
             b_rep = compute_string_representation_of_actions(
                 [create_insert_action(b)]
             )
-            for e in ending_inserts:
-                e_rep = compute_string_representation_of_actions(
-                    [create_insert_action(e)]
-                )
-                collection.append(b_rep + other_representation + e_rep)
-
+            for j, e in enumerate(ending_inserts):
+                if i != len(beginning_inserts) - 1 or j != len(ending_inserts) - 1:
+                    e_rep = compute_string_representation_of_actions(
+                        [create_insert_action(e)]
+                    )
+                    collection.append(b_rep + other_representation + e_rep)
 
 def compute_action_subsequences_including_leading_and_trailing_inserts(
     actions: list[BasicAction]
