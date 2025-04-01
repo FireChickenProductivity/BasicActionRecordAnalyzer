@@ -106,6 +106,7 @@ def generate_recommendations(recommendation_directory, data_directory, parameter
         recommendations = compute_best_recommendations(
             parameters.max_number_of_recommendations,
             recommendations,
+            is_verbose=True
         )
     print('outputting recommendations')
     output_recommendations(recommendations, recommendation_directory)
