@@ -1,12 +1,20 @@
 from recommendation_generation import PotentialCommandInformation, compute_string_representation_of_actions, PotentialAbstractCommandInformation 
 from input_parsing import NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
 from collections import Counter
+from action_records import BasicAction
+from action_utilities import create_insert_action, is_insert
 
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
 
 def compute_number_of_elements_in_range(start: int, final: int) -> int:
     return final - start + 1
+
+def compute_string_subsequences(text: str):
+    for i in range(len(text)):
+        for j in range(i, len(text)):
+            if compute_number_of_elements_in_range(i, j) < len(text):
+                yield text[i:j + 1]
 
 def compute_action_subsequences(actions):
     for i in range(len(actions)):
@@ -146,7 +154,40 @@ def compute_heuristic_recommendation_score(recommendations: list[PotentialComman
         num_commands_including_action
     )
 
-def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
+def compute_action_subsequences_including_leading_and_trailing_inserts(
+    actions: list[BasicAction]
+):
+    for i in range(len(actions)):
+        for j in range(i, len(actions)):
+            subsequences = []
+            sub_actions = actions[i:j + 1]
+            if compute_number_of_elements_in_range(i, j) < len(actions):
+                subsequences.append(compute_string_representation_of_actions(sub_actions))
+            if len(sub_actions) == 1 and is_insert(sub_actions[0]):
+                #Consider every subsequence
+                inserted_text = sub_actions[0].get_arguments()[0]
+                for s in compute_string_subsequences(inserted_text):
+                    action = create_insert_action(s)
+                    rep = compute_string_representation_of_actions([action])
+                    subsequences.append(rep)
+            # else:
+            #     #Because I am doing so much string concatenation here
+            #     #this is costly and could be optimized later
+            #     beginning_inserts = []
+            #     ending_inserts = []
+            #     if sub_actions[0].get_name() == "insert":
+            #         inserted_text = sub_actions[0].get_arguments()[0]
+            #         original_sub_action = sub_actions[0]
+            #         if len(inserted_text) > 1:
+            #             for i in range(len(inserted_text) - 1):
+            #                 beginning_inserts.append(inserted_text)
+            
+            for subsequence in subsequences:
+                yield subsequence
+
+def filter_out_recommendations_redundant_smaller_commands(
+    recommendations: list[PotentialCommandInformation]
+) -> list[PotentialCommandInformation]:
     #For every command that is a shorter version of another command but is not used any more times: remove it
     action_sequences: dict[str, PotentialCommandInformation] = {}
     for command in recommendations:
@@ -155,7 +196,7 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
     to_remove = set()
     for sequence in action_sequences:
         command = action_sequences[sequence]
-        for sub_sequence in compute_action_subsequences(command.get_actions()):
+        for sub_sequence in compute_action_subsequences_including_leading_and_trailing_inserts(command.get_actions()):
             if sub_sequence in action_sequences and \
                 action_sequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
                 to_remove.add(sub_sequence)
@@ -164,6 +205,9 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
     result = [action_sequences[s] for s in action_sequences]
     return result
 
+def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
+    recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
+    return recommendations
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
