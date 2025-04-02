@@ -253,11 +253,14 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, is_verbose=False):
+    if is_verbose: print(f"Narrowing it down from {len(recommendations)}.")
     if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
         return recommendations
     if is_verbose: print("Using safe heuristic preprocessing")
     recommendations = filter_out_recommendations_using_safe_heuristics(recommendation_limit, recommendations)
-    if is_verbose: print("Finding the best combination of recommendations")
+    if is_verbose:
+        print(f"Narrowed it down to {len(recommendations)}.")
+        print("Finding the best combination of recommendations")
     best_recommendations = []
     for _ in range(recommendation_limit):
         best_score = 0
