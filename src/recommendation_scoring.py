@@ -3,6 +3,7 @@ from input_parsing import NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
 from collections import Counter
 from action_records import BasicAction
 from action_utilities import create_insert_action, is_insert, get_insert_text
+from monte_carlo_tree_search import perform_monte_carlo_tree_search
 
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
@@ -250,6 +251,8 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
     recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
     return recommendations
 
+#TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
+#Try to optimize to not need repeatedly recomputing the action representations
 def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score):
     recommendations_copy = recommendations[:]
     best_recommendations = []
@@ -270,8 +273,6 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
             recommendations_copy.pop(best_recommendation_index)
     return best_recommendations, best_score
 
-#TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
-#Try to optimize to not need repeatedly recomputing the action representations
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, is_verbose=False):
     if is_verbose: print(f"Narrowing it down from {len(recommendations)}.")
     if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
@@ -286,4 +287,14 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         recommendations,
         scoring_function
     )
+    monte_carlo_recommendation, monte_carlo_score = perform_monte_carlo_tree_search(
+        recommendations,
+        recommendation_limit,
+        scoring_function,
+        100000
+    )
+    if monte_carlo_score > greedy_score:
+        best_recommendations = monte_carlo_recommendation
+    print('greedy_score', greedy_score)
+    print('monte_carlo_score', monte_carlo_score)
     return best_recommendations
