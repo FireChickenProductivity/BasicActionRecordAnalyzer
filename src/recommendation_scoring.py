@@ -250,6 +250,26 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
     recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
     return recommendations
 
+def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score):
+    recommendations_copy = recommendations[:]
+    best_recommendations = []
+    for _ in range(recommendation_limit):
+        best_score = 0
+        best_recommendation_index = None
+        for index, recommendation in enumerate(recommendations_copy):
+            best_recommendations.append(recommendation)
+            score = scoring_function(best_recommendations)
+            if score > best_score:
+                best_score = score
+                best_recommendation_index = index
+            best_recommendations.pop()
+        if best_score == 0:
+            break
+        else:
+            best_recommendations.append(recommendations_copy[best_recommendation_index])
+            recommendations_copy.pop(best_recommendation_index)
+    return best_recommendations, best_score
+
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, is_verbose=False):
@@ -261,20 +281,9 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
     if is_verbose:
         print(f"Narrowed it down to {len(recommendations)}.")
         print("Finding the best combination of recommendations")
-    best_recommendations = []
-    for _ in range(recommendation_limit):
-        best_score = 0
-        best_recommendation_index = None
-        for index, recommendation in enumerate(recommendations):
-            best_recommendations.append(recommendation)
-            score = scoring_function(best_recommendations)
-            if score > best_score:
-                best_score = score
-                best_recommendation_index = index
-            best_recommendations.pop()
-        if best_score == 0:
-            break
-        else:
-            best_recommendations.append(recommendations[best_recommendation_index])
-            recommendations.pop(best_recommendation_index)
+    best_recommendations, greedy_score = compute_best_recommendations_based_on_greedy_local_max(
+        recommendation_limit,
+        recommendations,
+        scoring_function
+    )
     return best_recommendations
