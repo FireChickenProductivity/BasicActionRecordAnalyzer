@@ -4,17 +4,25 @@ from recommendation_generation import PotentialCommandInformation
 import random
 
 class ScoredNode:
-    def __init__(self, index: int):
+    def __init__(self, index: int, depth: int=0, parent=None):
         self.index = index
         self.score = 0
         self.children = {}
         self.times_explored = 0
+        self.depth = depth
+        self.parent = parent
+
+    def get_depth(self):
+        return self.depth
     
     def get_index(self):
         return self.index
 
     def get_children(self):
         return self.children.values()
+
+    def get_parent(self):
+        return self.parent
 
     def get_score(self):
         return self.score
@@ -34,7 +42,7 @@ class ScoredNode:
 
     def get_child(self, index):
         if not self.has_child(index):
-            self.children[index] = ScoredNode(index)
+            self.children[index] = ScoredNode(index, self.depth + 1, self)
         return self.children[index]
 
 class MonteCarloExplorationData:
@@ -79,13 +87,24 @@ class MonteCarloExplorationData:
                 best_score = score
         return best_index
 
+    def handle_expansion(self, path):
+        progress = None
+        for choice in path:
+            progress = self.get_progress_from_choice(choice, progress)
+
 class MonteCarloTreeSearcher:
-    def __init__(self, scoring_function, recommendation_limit: int):
+    def __init__(
+        self,
+        scoring_function,
+        recommendation_limit: int,
+        recommendations: list[PotentialCommandInformation]
+    ):
         self.scoring_function = scoring_function
         self.best_recommendation: list[PotentialCommandInformation]
         self.best_score: int = 0
         self.recommendation_limit = recommendation_limit
         self.exploration_data = MonteCarloExplorationData()
+        self.recommendations = recommendations
 
     def get_best_score(self):
         return self.best_score
@@ -93,39 +112,46 @@ class MonteCarloTreeSearcher:
     def get_best_recommendation(self):
         return self.best_recommendation
 
-
-    def explore_solution(self, recommendations: list[PotentialCommandInformation]):
-        #Repeatedly pick a node to explore until leaf reached
-        #Backpropagate the score
-        path = []
-        last_potential_index = len(recommendations) - self.recommendation_limit
-        next_possible_index = 0
-        progress = None
-        for _ in range(self.recommendation_limit):
-            choice = None
-            if random.random() > 0.5:
-                choice = self.exploration_data.compute_best_child(progress)
-            if not choice:
-                choice = random.randint(next_possible_index, last_potential_index)
-                
-            progress = self.exploration_data.get_progress_from_choice(choice, progress)
-
+    def simulate_play_out(
+            self, 
+            starting_path: list[PotentialCommandInformation],
+        ):
+        path = starting_path[:]
+        last_potential_index = len(self.recommendations) - self.recommendation_limit - len(starting_path)
+        next_possible_index = len(starting_path)
+        for _ in range(self.recommendation_limit - len(starting_path)):
+            choice = random.randint(next_possible_index, last_potential_index)
             next_possible_index = choice + 1
             last_potential_index += 1
             path.append(choice)
-        potential_recommendations = [recommendations[i] for i in path]
+        potential_recommendations = [self.recommendations[i] for i in path]
         score = self.scoring_function(potential_recommendations)
         if score > self.best_score:
             self.best_score = score
+            print("New best score from random exploration", self.best_score)
             self.best_recommendation = potential_recommendations
-        self.exploration_data.back_propagate_score(path, score)
+        self.exploration_data.back_propagate_score(starting_path, score)
+    
+    def select_next_starting_path(self):
+        pass
+
+    def expand(self, path):
+        self.exploration_data.handle_expansion(path)
+
+    def explore_solution(self):
+        #Need to pick a good node to explore
+        #Need to do a play out
+        #Back propagate
+        starting_path = self.select_next_starting_path()
+        self.expand(starting_path)
+        self.simulate_play_out(starting_path)
 
 
-    def explore_solutions(self, num_trials: int, recommendations: list[PotentialCommandInformation]):
+    def explore_solutions(self, num_trials: int):
         for _ in range(num_trials):
-            self.explore_solution(recommendations)
+            self.explore_solution()
     
 def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials):
-    searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit)
-    searcher.explore_solutions(number_of_trials, recommendations)
+    searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations)
+    searcher.explore_solutions(number_of_trials)
     return searcher.get_best_recommendation(), searcher.get_best_score()

@@ -291,7 +291,7 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         recommendations,
         recommendation_limit,
         scoring_function,
-        100000
+        10000
     )
     if monte_carlo_score > greedy_score:
         best_recommendations = monte_carlo_recommendation
