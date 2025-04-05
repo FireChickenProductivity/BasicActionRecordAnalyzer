@@ -158,11 +158,15 @@ class MonteCarloTreeSearcher:
             self.best_recommendation = potential_recommendations
         self.exploration_data.back_propagate_score(starting_path, score)
     
-    def compute_alternative_score(self, progress, index: int) -> float:
-        return math.sqrt(math.log(self.exploration_data.compute_times_explored(progress)))
-        
+    def compute_alternative_score(self, progress, path, index: int) -> float:
+        exploration_part = math.sqrt(math.log(self.exploration_data.compute_times_explored(progress)))
+        command = self.recommendations[index]
+        score_part = self.scoring_function([command])/self.scoring_function(path + [command])
+        if score_part > 1:
+            score_part = 0
+        return exploration_part + score_part
 
-    def compute_best_alternative(self, progress) -> tuple[int, float]:
+    def compute_best_alternative(self, path, progress) -> tuple[int, float]:
         next_index = self.exploration_data.return_next_index_after_exploration(
             progress
         )
@@ -171,14 +175,14 @@ class MonteCarloTreeSearcher:
         #If exactly the limit left, just return the next one
         num_remaining = len(self.recommendations) - self.exploration_data.compute_depth(progress)
         if num_remaining == self.recommendation_limit:
-            return next_index, self.compute_alternative_score(progress, next_index)
+            return next_index, self.compute_alternative_score(progress, path, next_index)
         ending_index = min(
             next_index + NUM_ALTERNATIVES_TO_EXPLORE, 
             len(self.recommendations)
             )
         return compute_max(
                     range(next_index, ending_index), 
-                    lambda i: self.compute_alternative_score(progress, i)
+                    lambda i: self.compute_alternative_score(progress, path, i)
                     )
 
     def select_next_starting_path(self):
@@ -186,22 +190,24 @@ class MonteCarloTreeSearcher:
         if not self.exploration_data.compute_times_explored(None):
             return [0]
         path = []
+        path_commands = []
         progress = None
         best_child, value = self.exploration_data.compute_best_child(progress)
-        alternative, alternative_value = self.compute_best_alternative(progress)
+        alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
         if alternative_value > value:
             path.append(alternative)
             return path
         while best_child:
             path.append(best_child)
+            path_commands.append(self.recommendations[best_child])
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
             best_child, value = self.exploration_data.compute_best_child(progress)
-            alternative, alternative_value = self.compute_best_alternative(progress)
+            alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
             if alternative_value > value:
                 path.append(alternative)
                 return path
         if len(path) < self.recommendation_limit:
-            alternative, _ = self.compute_best_alternative(progress)
+            alternative, _ = self.compute_best_alternative(path_commands, progress)
             path.append(alternative)
         return path
 
