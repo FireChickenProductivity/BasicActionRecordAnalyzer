@@ -162,7 +162,7 @@ class MonteCarloTreeSearcher:
         score = self.scoring_function(potential_recommendations)
         if score > self.best_score:
             self.best_score = score
-            print("New best score from random exploration", self.best_score)
+            print("New best score from random exploration", self.best_score, "with depth", len(starting_path))
             self.best_recommendation = potential_recommendations
         self.exploration_data.back_propagate_score(starting_path, score)
     
@@ -206,7 +206,7 @@ class MonteCarloTreeSearcher:
         if alternative_value > value:
             path.append(alternative)
             return path
-        while best_child is not None:
+        while best_child is not None and len(path) < self.recommendation_limit - 1:
             path.append(best_child)
             path_commands.append(self.recommendations[best_child])
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
