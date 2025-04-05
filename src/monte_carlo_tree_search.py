@@ -3,6 +3,9 @@
 from recommendation_generation import PotentialCommandInformation
 import random
 import math
+from calculation_utilities import compute_max
+
+NUM_ALTERNATIVES_TO_EXPLORE = 5
 
 class ScoredNode:
     def __init__(self, index: int, depth: int=0, parent=None):
@@ -49,7 +52,7 @@ class ScoredNode:
 class MonteCarloExplorationData:
     def __init__(self):
         """Contains data on the exploration done so far searching for a good set of recommendations"""
-        self.roots = {}
+        self.roots: dict[int, ScoredNode] = {}
         self.total_explored = 0
 
     def back_propagate_score(self, path: list[int], score: int):
@@ -87,17 +90,26 @@ class MonteCarloExplorationData:
         best_value = 0
         best_index = -1
 
+        best_score = max(children, key=lambda x: x.get_score())
         for child in children:
-            value = child.get_score() + math.sqrt(math.log(times_parent_explored)/child.get_times_explored())
+            value = child.get_score()/best_score + math.sqrt(math.log(times_parent_explored)/child.get_times_explored())
             if value > best_value:
                 best_index = child.get_index()
                 best_value = value
         return best_index, value
 
+    def return_next_index_after_exploration(self, progress: ScoredNode) -> int:
+        if not progress:
+            return max(self.roots, default=0) + 1
+        return max(progress.get_children(), key=lambda x: x.get_index(), default=progress.get_index())
+                    
     def handle_expansion(self, path):
         progress = None
         for choice in path:
             progress = self.get_progress_from_choice(choice, progress)
+
+    def compute_depth(self, progress: ScoredNode):
+        return progress.get_depth() if progress else 0
 
 class MonteCarloTreeSearcher:
     def __init__(
@@ -143,15 +155,47 @@ class MonteCarloTreeSearcher:
             self.best_recommendation = potential_recommendations
         self.exploration_data.back_propagate_score(starting_path, score)
     
+    def compute_alternative_score(self, progress, index) -> float:
+        pass
+
+    def compute_best_alternative(self, progress) -> tuple[int, float]:
+        next_index = self.exploration_data.return_next_index_after_exploration(
+            progress
+        )
+        #If exactly the limit left, just return the next one
+        num_remaining = len(self.recommendations) - self.exploration_data(progress)
+        if num_remaining == self.recommendation_limit:
+            return next_index, self.compute_alternative_score(progress, next_index)
+        ending_index = min(
+            next_index + NUM_ALTERNATIVES_TO_EXPLORE, 
+            len(self.recommendations)
+            )
+        return compute_max(
+                    range(next_index, ending_index), 
+                    self.compute_best_alternative
+                    )
+        
+
     def select_next_starting_path(self):
         #Recursively pick best node until reaching leaf
         path = []
         progress = None
         best_child, value = self.exploration_data.compute_best_child(progress)
+        alternative, alternative_value = self.compute_best_alternative(progress)
+        if alternative_value > value:
+            path.append(alternative)
+            return path
         while best_child:
             path.append(best_child)
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
             best_child, value = self.exploration_data.compute_best_child(progress)
+            alternative, alternative_value = self.compute_best_alternative(progress)
+            if alternative_value > value:
+                path.append(alternative)
+                return path
+        if len(path) < self.recommendation_limit:
+            alternative, _ = self.compute_best_alternative(progress)
+            path.append(alternative)
         return path
 
     def expand(self, path):
