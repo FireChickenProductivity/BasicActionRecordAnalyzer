@@ -180,7 +180,7 @@ class MonteCarloTreeSearcher:
     
     def compute_alternative_score(self, progress, path, index: int) -> float:
         exploration_part = math.sqrt(math.log(self.exploration_data.compute_times_explored(progress)))
-        exploration_part = math.log(exploration_part) if exploration_part else 0
+        exploration_part = math.sqrt(exploration_part) if exploration_part else 0
         command = self.recommendations[index]
         score_part = self.scoring_function([command])/self.scoring_function(path + [command])
         if score_part >= 1:
@@ -243,7 +243,7 @@ class MonteCarloTreeSearcher:
         starting_path = self.select_next_starting_path()
         assert len(starting_path) <= self.recommendation_limit, (starting_path, self.recommendation_limit)
         self.expand(starting_path)
-        for _ in range(10): self.simulate_play_out(starting_path)
+        for _ in range(100): self.simulate_play_out(starting_path)
         self.exploration_data.handle_exploration(starting_path)
 
     def explore_solutions(self, num_trials: int):
