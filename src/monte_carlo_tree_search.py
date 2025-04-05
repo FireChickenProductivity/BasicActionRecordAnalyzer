@@ -2,6 +2,7 @@
 
 from recommendation_generation import PotentialCommandInformation
 import random
+import math
 
 class ScoredNode:
     def __init__(self, index: int, depth: int=0, parent=None):
@@ -49,6 +50,7 @@ class MonteCarloExplorationData:
     def __init__(self):
         """Contains data on the exploration done so far searching for a good set of recommendations"""
         self.roots = {}
+        self.total_explored = 0
 
     def back_propagate_score(self, path: list[int], score: int):
         root = self.roots[path[0]]
@@ -56,6 +58,7 @@ class MonteCarloExplorationData:
         for index in range(1, len(path)):
             root = root.get_child(path[index])
             root.handle_score(score)
+        self.total_explored += 1
 
     def get_progress_from_choice(self, choice: int, progress):
         if not progress:
@@ -72,20 +75,24 @@ class MonteCarloExplorationData:
         return result
 
     def compute_best_child(self, progress: ScoredNode):
+        """Computes the best child and corresponding value using UCT"""
         if progress:
             children = progress.get_children()
+            times_parent_explored = progress.get_times_explored()
         else:
             children = self.roots.values()
+            times_parent_explored = self.total_explored
         if not children:
-            return None
-        best_score = 0
+            return None, 0
+        best_value = 0
         best_index = -1
+
         for child in children:
-            score = child.get_score()
-            if score > best_score:
+            value = child.get_score() + math.sqrt(math.log(times_parent_explored)/child.get_times_explored())
+            if value > best_value:
                 best_index = child.get_index()
-                best_score = score
-        return best_index
+                best_value = value
+        return best_index, value
 
     def handle_expansion(self, path):
         progress = None
@@ -104,7 +111,11 @@ class MonteCarloTreeSearcher:
         self.best_score: int = 0
         self.recommendation_limit = recommendation_limit
         self.exploration_data = MonteCarloExplorationData()
-        self.recommendations = recommendations
+        self.recommendations = sorted(
+            recommendations, 
+            key=lambda r: r.get_number_of_words_saved(),
+            reverse=True,
+        )
 
     def get_best_score(self):
         return self.best_score
@@ -133,7 +144,15 @@ class MonteCarloTreeSearcher:
         self.exploration_data.back_propagate_score(starting_path, score)
     
     def select_next_starting_path(self):
-        pass
+        #Recursively pick best node until reaching leaf
+        path = []
+        progress = None
+        best_child, value = self.exploration_data.compute_best_child(progress)
+        while best_child:
+            path.append(best_child)
+            progress = self.exploration_data.get_progress_from_choice(best_child, progress)
+            best_child, value = self.exploration_data.compute_best_child(progress)
+        return path
 
     def expand(self, path):
         self.exploration_data.handle_expansion(path)
