@@ -287,14 +287,14 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         recommendations,
         scoring_function
     )
+    print('greedy_score', greedy_score)
     monte_carlo_recommendation, monte_carlo_score = perform_monte_carlo_tree_search(
         recommendations,
         recommendation_limit,
         scoring_function,
-        10000
+        100000
     )
     if monte_carlo_score > greedy_score:
         best_recommendations = monte_carlo_recommendation
-    print('greedy_score', greedy_score)
     print('monte_carlo_score', monte_carlo_score)
     return best_recommendations

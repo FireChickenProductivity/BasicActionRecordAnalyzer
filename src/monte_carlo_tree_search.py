@@ -77,6 +77,9 @@ class MonteCarloExplorationData:
             result[child.get_index()] = (child.get_score(), child.get_times_explored())
         return result
 
+    def compute_times_explored(self, progress: ScoredNode) -> int:
+        return progress.get_times_explored() if progress else self.total_explored
+
     def compute_best_child(self, progress: ScoredNode):
         """Computes the best child and corresponding value using UCT"""
         if progress:
@@ -90,7 +93,7 @@ class MonteCarloExplorationData:
         best_value = 0
         best_index = -1
 
-        best_score = max(children, key=lambda x: x.get_score())
+        best_score = max(children, key=lambda x: x.get_score()).get_score()
         for child in children:
             value = child.get_score()/best_score + math.sqrt(math.log(times_parent_explored)/child.get_times_explored())
             if value > best_value:
@@ -155,15 +158,18 @@ class MonteCarloTreeSearcher:
             self.best_recommendation = potential_recommendations
         self.exploration_data.back_propagate_score(starting_path, score)
     
-    def compute_alternative_score(self, progress, index) -> float:
-        pass
+    def compute_alternative_score(self, progress, index: int) -> float:
+        return math.sqrt(math.log(self.exploration_data.compute_times_explored(progress)))
+        
 
     def compute_best_alternative(self, progress) -> tuple[int, float]:
         next_index = self.exploration_data.return_next_index_after_exploration(
             progress
         )
+        if next_index == len(self.recommendations):
+            return -1, -1
         #If exactly the limit left, just return the next one
-        num_remaining = len(self.recommendations) - self.exploration_data(progress)
+        num_remaining = len(self.recommendations) - self.exploration_data.compute_depth(progress)
         if num_remaining == self.recommendation_limit:
             return next_index, self.compute_alternative_score(progress, next_index)
         ending_index = min(
@@ -172,12 +178,13 @@ class MonteCarloTreeSearcher:
             )
         return compute_max(
                     range(next_index, ending_index), 
-                    self.compute_best_alternative
+                    lambda i: self.compute_alternative_score(progress, i)
                     )
-        
 
     def select_next_starting_path(self):
         #Recursively pick best node until reaching leaf
+        if not self.exploration_data.compute_times_explored(None):
+            return [0]
         path = []
         progress = None
         best_child, value = self.exploration_data.compute_best_child(progress)
