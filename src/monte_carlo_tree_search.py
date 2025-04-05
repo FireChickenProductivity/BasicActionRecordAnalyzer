@@ -243,7 +243,7 @@ class MonteCarloTreeSearcher:
         starting_path = self.select_next_starting_path()
         assert len(starting_path) <= self.recommendation_limit, (starting_path, self.recommendation_limit)
         self.expand(starting_path)
-        for _ in range(100): self.simulate_play_out(starting_path)
+        self.simulate_play_out(starting_path)
         self.exploration_data.handle_exploration(starting_path)
 
     def explore_solutions(self, num_trials: int):
