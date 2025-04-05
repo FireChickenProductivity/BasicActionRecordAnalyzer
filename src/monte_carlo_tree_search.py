@@ -36,6 +36,8 @@ class ScoredNode:
 
     def handle_score(self, score):
         self.score = max(score, self.score)
+    
+    def handle_exploration(self):
         self.times_explored += 1
 
     def add_child(self, node):
@@ -61,7 +63,6 @@ class MonteCarloExplorationData:
         for index in range(1, len(path)):
             root = root.get_child(path[index])
             root.handle_score(score)
-        self.total_explored += 1
 
     def get_progress_from_choice(self, choice: int, progress):
         if not progress:
@@ -101,10 +102,10 @@ class MonteCarloExplorationData:
                 best_value = value
         return best_index, value
 
-    def return_next_index_after_exploration(self, progress: ScoredNode) -> int:
+    def compute_next_index_after_exploration(self, progress: ScoredNode) -> int:
         if not progress:
             return max(self.roots, default=0) + 1
-        return max(progress.get_children(), key=lambda x: x.get_index(), default=progress.get_index())
+        return max(progress.get_children(), key=lambda x: x.get_index(), default=progress).get_index()
                     
     def handle_expansion(self, path):
         progress = None
@@ -113,6 +114,13 @@ class MonteCarloExplorationData:
 
     def compute_depth(self, progress: ScoredNode):
         return progress.get_depth() if progress else 0
+
+    def handle_exploration(self, path):
+        self.total_explored += 1
+        progress = None
+        for choice in path:
+            progress = self.get_progress_from_choice(choice, progress)
+            progress.handle_exploration()
 
 class MonteCarloTreeSearcher:
     def __init__(
@@ -160,14 +168,15 @@ class MonteCarloTreeSearcher:
     
     def compute_alternative_score(self, progress, path, index: int) -> float:
         exploration_part = math.sqrt(math.log(self.exploration_data.compute_times_explored(progress)))
+        exploration_part = math.log(exploration_part) if exploration_part else 0
         command = self.recommendations[index]
         score_part = self.scoring_function([command])/self.scoring_function(path + [command])
-        if score_part > 1:
+        if score_part >= 1:
             score_part = 0
         return exploration_part + score_part
 
     def compute_best_alternative(self, path, progress) -> tuple[int, float]:
-        next_index = self.exploration_data.return_next_index_after_exploration(
+        next_index = self.exploration_data.compute_next_index_after_exploration(
             progress
         )
         if next_index == len(self.recommendations):
@@ -197,15 +206,16 @@ class MonteCarloTreeSearcher:
         if alternative_value > value:
             path.append(alternative)
             return path
-        while best_child:
+        while best_child is not None:
             path.append(best_child)
             path_commands.append(self.recommendations[best_child])
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
             best_child, value = self.exploration_data.compute_best_child(progress)
-            alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
-            if alternative_value > value:
-                path.append(alternative)
-                return path
+            if best_child is not None:
+                alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
+                if alternative_value > value:
+                    path.append(alternative)
+                    return path
         if len(path) < self.recommendation_limit:
             alternative, _ = self.compute_best_alternative(path_commands, progress)
             path.append(alternative)
@@ -219,9 +229,10 @@ class MonteCarloTreeSearcher:
         #Need to do a play out
         #Back propagate
         starting_path = self.select_next_starting_path()
+        assert len(starting_path) <= self.recommendation_limit, (starting_path, self.recommendation_limit)
         self.expand(starting_path)
-        self.simulate_play_out(starting_path)
-
+        for _ in range(10): self.simulate_play_out(starting_path)
+        self.exploration_data.handle_exploration(starting_path)
 
     def explore_solutions(self, num_trials: int):
         for _ in range(num_trials):
