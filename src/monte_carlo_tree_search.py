@@ -105,7 +105,7 @@ class MonteCarloExplorationData:
     def compute_next_index_after_exploration(self, progress: ScoredNode) -> int:
         if not progress:
             return max(self.roots, default=0) + 1
-        return max(progress.get_children(), key=lambda x: x.get_index(), default=progress).get_index()
+        return max(progress.get_children(), key=lambda x: x.get_index(), default=progress).get_index() + 1
                     
     def handle_expansion(self, path):
         progress = None
@@ -162,7 +162,7 @@ class MonteCarloTreeSearcher:
         score = self.scoring_function(potential_recommendations)
         if score > self.best_score:
             self.best_score = score
-            print("New best score from random exploration", self.best_score, "with depth", len(starting_path))
+            print("New best score from random exploration", self.best_score, "with depth", len(starting_path), "and starting path score", self.scoring_function([self.recommendations[i] for i in starting_path]), starting_path)
             self.best_recommendation = potential_recommendations
         self.exploration_data.back_propagate_score(starting_path, score)
     
@@ -237,8 +237,16 @@ class MonteCarloTreeSearcher:
     def explore_solutions(self, num_trials: int):
         for _ in range(num_trials):
             self.explore_solution()
+
+    def seed(self, seed):
+        indexes = [self.recommendations.index(i) for i in seed]
+        self.expand(indexes)
+        self.simulate_play_out(indexes)
+        self.exploration_data.handle_exploration(indexes)
+        self.best_score = 0
     
-def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials):
+def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, seed=None):
     searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations)
+    if seed: searcher.seed(seed)
     searcher.explore_solutions(number_of_trials)
     return searcher.get_best_recommendation(), searcher.get_best_score()
