@@ -122,29 +122,40 @@ class MonteCarloExplorationData:
             progress = self.get_progress_from_choice(choice, progress)
             progress.handle_exploration()
 
+    def create_initial_for_path(self, path: list[int]):
+        progress = None
+        for choice in path:
+            progress = self.get_progress_from_choice(choice, progress)
+            progress.handle_exploration()
+        return progress
+
 class MonteCarloTreeSearcher:
     def __init__(
         self,
         scoring_function,
         recommendation_limit: int,
-        recommendations: list[PotentialCommandInformation]
+        recommendations: list[PotentialCommandInformation],
+        start
     ):
+        """recommendations should be sorted in ascending order of value"""
         self.scoring_function = scoring_function
         self.best_recommendation: list[PotentialCommandInformation]
         self.best_score: int = 0
+        self.best_recommendation_indexes: list[int]
         self.recommendation_limit = recommendation_limit
         self.exploration_data = MonteCarloExplorationData()
-        self.recommendations = sorted(
-            recommendations, 
-            key=lambda r: r.get_number_of_words_saved(),
-            reverse=True,
-        )
+        self.recommendations = recommendations
+        self.start = start
+        self.initial_progress = self.exploration_data.create_initial_for_path(self.start)
 
     def get_best_score(self):
         return self.best_score
 
     def get_best_recommendation(self):
         return self.best_recommendation
+
+    def get_best_recommendation_indexes(self):
+        return self.best_recommendation_indexes
 
     def simulate_play_out(
             self, 
@@ -164,6 +175,7 @@ class MonteCarloTreeSearcher:
             self.best_score = score
             print("New best score from random exploration", self.best_score, "with depth", len(starting_path), "and starting path score", self.scoring_function([self.recommendations[i] for i in starting_path]), starting_path)
             self.best_recommendation = potential_recommendations
+            self.best_recommendation_indexes = path
         self.exploration_data.back_propagate_score(starting_path, score)
     
     def compute_alternative_score(self, progress, path, index: int) -> float:
@@ -198,9 +210,9 @@ class MonteCarloTreeSearcher:
         #Recursively pick best node until reaching leaf
         if not self.exploration_data.compute_times_explored(None):
             return [0]
-        path = []
+        path = self.start[:]
         path_commands = []
-        progress = None
+        progress = self.initial_progress
         best_child, value = self.exploration_data.compute_best_child(progress)
         alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
         if alternative_value > value:
@@ -246,7 +258,21 @@ class MonteCarloTreeSearcher:
         self.best_score = 0
     
 def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, seed=None):
-    searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations)
-    if seed: searcher.seed(seed)
-    searcher.explore_solutions(number_of_trials)
-    return searcher.get_best_recommendation(), searcher.get_best_score()
+    recommendations = sorted(
+            recommendations, 
+            key=lambda r: r.get_number_of_words_saved(),
+            reverse=True,
+        )
+    indexes = []
+    best: list[PotentialCommandInformation]
+    best_score = 0
+    for i in range(recommendation_limit):
+        print(f"Running round {i + 1} of tree search")
+        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes)
+        if seed: searcher.seed(seed)
+        searcher.explore_solutions(number_of_trials)
+        indexes.append(searcher.get_best_recommendation_indexes()[i])
+        if searcher.get_best_score() > best_score:
+            best_score = searcher.get_best_score()
+            best = searcher.get_best_recommendation()
+    return best, best_score
