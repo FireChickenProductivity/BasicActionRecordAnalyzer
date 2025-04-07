@@ -247,8 +247,53 @@ def filter_out_recommendations_redundant_smaller_commands(
     result = [action_sequences[s] for s in action_sequences]
     return result
 
+def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
+    done = False
+    while not done:
+        #Separate into groups that do not overlap with each other
+        #Keep the best from each group
+        previous_number = len(recommendations)
+        groups: list[tuple[set, list]] = []
+        for recommendation in recommendations:
+            belongs_to_a_group = False
+            action_representations = [
+                compute_string_representation_of_actions([a])
+                for a in recommendation.get_actions()
+            ]
+            for group in groups:
+                group_set, group_list = group
+                belongs_to_group = True
+                for action in action_representations:
+                    if action in group_set:
+                        belongs_to_group = False
+                        break
+                if belongs_to_group:
+                    group_list.append(recommendation)
+                    for a in action_representations:
+                        group_set.add(a)
+                    belongs_to_a_group = True
+                    break
+            if not belongs_to_a_group:
+                groups.append((set(action_representations), [recommendation]))
+        group_lists = [group[1] for group in groups]
+        recommendations = []
+        for group in group_lists:
+            if len(group) > recommendation_limit:
+                new_group = sorted(group, key=lambda r: r.get_number_of_words_saved(), reverse=True)[:recommendation_limit]
+                recommendations.extend(new_group)
+            else:
+                recommendations.extend(group)
+        if len(recommendations) == previous_number or len(recommendations) == recommendation_limit:
+            done = True
+        else:
+            print(f"Narrowed it down to {len(recommendations)}")
+    return recommendations
+
+
 def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
     recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
+    if len(recommendations) > recommendation_limit:
+        recommendations = filter_out_inferior_within_nonoverlapping_regions(recommendation_limit, recommendations)
     return recommendations
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
