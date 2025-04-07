@@ -248,24 +248,26 @@ def filter_out_recommendations_redundant_smaller_commands(
     result = [action_sequences[s] for s in action_sequences]
     return result
 
-def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
-    done = False
-    #These overlap nothing
+def compute_overlapping_and_nonoverlapping(non_overlapping_limit: int, total: list[PotentialCommandInformation]):
     non_overlapping = []
-    num_commands_including_action = _compute_number_of_commands_including_action(recommendations)
-    original_recommendations = recommendations[:]
-    recommendations = []
-    for r in original_recommendations:
+    num_commands_including_action = _compute_number_of_commands_including_action(total)
+    overlapping = []
+    for r in total:
         overlaps = False
         for a in r.get_actions():
             if num_commands_including_action[compute_string_representation_of_actions([a])] > 1:
                 overlaps = True
                 break
         if overlaps:
-            recommendations.append(r)
+            overlapping.append(r)
         else:
             non_overlapping.append(r)
-    print(f"{len(non_overlapping)} overlap nothing else")
+    return overlapping, sorted(non_overlapping, key=lambda r: r.get_number_of_words_saved(), reverse=True)[:non_overlapping_limit]
+
+def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
+    done = False
+    #These overlap nothing
+    recommendations, non_overlapping = compute_overlapping_and_nonoverlapping(recommendation_limit, recommendations)
     while not done:
         #Separate into groups that do not overlap with each other
         #Keep the best from each group
@@ -305,7 +307,7 @@ def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int,
             done = True
         else:
             print(f"Narrowed it down to {total_count}")
-    recommendations.extend(sorted(non_overlapping, key=lambda r: r.get_number_of_words_saved(), reverse=True)[:recommendation_limit])
+    recommendations.extend(non_overlapping)
     return recommendations
 
 
