@@ -4,6 +4,7 @@ from collections import Counter
 from action_records import BasicAction
 from action_utilities import create_insert_action, is_insert, get_insert_text
 from monte_carlo_tree_search import perform_monte_carlo_tree_search
+import time
 
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
@@ -249,10 +250,26 @@ def filter_out_recommendations_redundant_smaller_commands(
 
 def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
     done = False
+    #These overlap nothing
+    non_overlapping = []
+    num_commands_including_action = _compute_number_of_commands_including_action(recommendations)
+    original_recommendations = recommendations[:]
+    recommendations = []
+    for r in original_recommendations:
+        overlaps = False
+        for a in r.get_actions():
+            if num_commands_including_action[compute_string_representation_of_actions([a])] > 1:
+                overlaps = True
+                break
+        if overlaps:
+            recommendations.append(r)
+        else:
+            non_overlapping.append(r)
+    print(f"{len(non_overlapping)} overlap nothing else")
     while not done:
         #Separate into groups that do not overlap with each other
         #Keep the best from each group
-        previous_number = len(recommendations)
+        previous_number = len(recommendations) + len(non_overlapping)
         groups: list[tuple[set, list]] = []
         for recommendation in recommendations:
             belongs_to_a_group = False
@@ -283,10 +300,12 @@ def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int,
                 recommendations.extend(new_group)
             else:
                 recommendations.extend(group)
-        if len(recommendations) == previous_number or len(recommendations) == recommendation_limit:
+        total_count = len(recommendations) + len(non_overlapping)
+        if total_count == previous_number or total_count == recommendation_limit:
             done = True
         else:
-            print(f"Narrowed it down to {len(recommendations)}")
+            print(f"Narrowed it down to {total_count}")
+    recommendations.extend(sorted(non_overlapping, key=lambda r: r.get_number_of_words_saved(), reverse=True)[:recommendation_limit])
     return recommendations
 
 
@@ -331,9 +350,12 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
     if is_verbose: print(f"Narrowing it down from {len(recommendations)}.")
     if recommendation_limit == NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
         return recommendations
-    if is_verbose: print("Using safe heuristic preprocessing")
+    if is_verbose: 
+        print("Using safe heuristic preprocessing")
+        current_time = time.time()
     recommendations = filter_out_recommendations_using_safe_heuristics(recommendation_limit, recommendations)
     if is_verbose:
+        print(f"Safe heuristics took {time.time() - current_time} seconds")
         print(f"Narrowed it down to {len(recommendations)}.")
         print("Finding the best combination of recommendations")
     best_recommendations, greedy_score = compute_best_recommendations_based_on_greedy_local_max(
