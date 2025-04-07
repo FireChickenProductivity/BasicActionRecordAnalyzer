@@ -253,24 +253,33 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
-def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score):
-    recommendations_copy = recommendations[:]
-    best_recommendations = []
-    for _ in range(recommendation_limit):
+def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, start=None):
+    if start is not None:
+        if isinstance(start[0], int):
+            best_recommendations = [recommendations[i] for i in start]
+        else:
+            best_recommendations = start
+    else:
+        best_recommendations = []
+    consumed = set(best_recommendations)
+    num_remaining = recommendation_limit - len(best_recommendations)
+    best_score = 0
+    for _ in range(num_remaining):
         best_score = 0
         best_recommendation_index = None
-        for index, recommendation in enumerate(recommendations_copy):
-            best_recommendations.append(recommendation)
-            score = scoring_function(best_recommendations)
-            if score > best_score:
-                best_score = score
-                best_recommendation_index = index
-            best_recommendations.pop()
+        for index, recommendation in enumerate(recommendations):
+            if index not in consumed:
+                best_recommendations.append(recommendation)
+                score = scoring_function(best_recommendations)
+                if score > best_score:
+                    best_score = score
+                    best_recommendation_index = index
+                best_recommendations.pop()
         if best_score == 0:
             break
         else:
-            best_recommendations.append(recommendations_copy[best_recommendation_index])
-            recommendations_copy.pop(best_recommendation_index)
+            best_recommendations.append(recommendations[best_recommendation_index])
+            consumed.add(best_recommendation_index)
     return best_recommendations, best_score
 
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, is_verbose=False):
@@ -293,6 +302,7 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         recommendation_limit,
         scoring_function,
         len(recommendations)//recommendation_limit,
+        greedy_function=compute_best_recommendations_based_on_greedy_local_max,
         #seed=best_recommendations
     )
     if monte_carlo_score > greedy_score:

@@ -257,7 +257,7 @@ class MonteCarloTreeSearcher:
         self.exploration_data.handle_exploration(indexes)
         self.best_score = 0
     
-def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, seed=None):
+def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, seed=None, greedy_function=None):
     recommendations = sorted(
             recommendations, 
             key=lambda r: r.get_number_of_words_saved(),
@@ -275,4 +275,10 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
         if searcher.get_best_score() > best_score:
             best_score = searcher.get_best_score()
             best = searcher.get_best_recommendation()
+        if greedy_function:
+            greedy_result, greedy_score = greedy_function(recommendation_limit, recommendations, start=indexes)
+            if greedy_score > best_score:
+                best_score = greedy_score
+                best = greedy_result
+                print(f"Got better result with greedy {best_score}")
     return best, best_score
