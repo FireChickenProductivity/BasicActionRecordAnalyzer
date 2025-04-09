@@ -138,6 +138,7 @@ class MonteCarloTreeSearcher:
         start,
         maximum_depth: int,
         rollouts_per_exploration: int=10,
+        rollouts_per_child_expansion: int=1,
     ):
         """recommendations should be sorted in ascending order of value"""
         self.scoring_function = scoring_function
@@ -151,6 +152,7 @@ class MonteCarloTreeSearcher:
         self.initial_progress = self.exploration_data.create_initial_for_path(self.start)
         self.maximum_depth = min(len(start) + maximum_depth, recommendation_limit)
         self.rollouts_per_exploration = rollouts_per_exploration
+        self.rollouts_per_child_expansion = rollouts_per_child_expansion
 
     def get_best_score(self):
         return self.best_score
@@ -183,60 +185,31 @@ class MonteCarloTreeSearcher:
             self.best_recommendation_indexes = path
         self.exploration_data.back_propagate_score(starting_path, score)
     
-    def compute_alternative_score(self, progress, path, index: int) -> float:
-        exploration_part = math.sqrt(math.log(self.exploration_data.compute_times_explored(progress)))
-        exploration_part = math.sqrt(exploration_part) if exploration_part else 0
-        command = self.recommendations[index]
-        score_part = self.scoring_function([command])/self.scoring_function(path + [command])
-        if score_part >= 1:
-            score_part = 0
-        return exploration_part + score_part
-
-    def compute_best_alternative(self, path, progress) -> tuple[int, float]:
-        next_index = self.exploration_data.compute_next_index_after_exploration(
-            progress
-        )
-        if next_index == len(self.recommendations):
-            return -1, -1
-        #If exactly the limit left, just return the next one
-        num_remaining = len(self.recommendations) - self.exploration_data.compute_depth(progress)
-        if num_remaining == self.recommendation_limit:
-            return next_index, self.compute_alternative_score(progress, path, next_index)
-        ending_index = min(
-            next_index + NUM_ALTERNATIVES_TO_EXPLORE, 
-            len(self.recommendations)
-            )
-        return compute_max(
-                    range(next_index, ending_index), 
-                    lambda i: self.compute_alternative_score(progress, path, i)
-                    )
-
     def select_next_starting_path(self):
         #Recursively pick best node until reaching leaf
-        if not self.exploration_data.compute_times_explored(None):
-            return [0]
         path = self.start[:]
-        path_commands = []
         progress = self.initial_progress
-        best_child, value = self.exploration_data.compute_best_child(progress)
-        alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
-        if alternative_value > value:
-            path.append(alternative)
-            return path
+        best_child, _ = self.exploration_data.compute_best_child(progress)
         while best_child is not None and len(path) < self.maximum_depth - 1:
             path.append(best_child)
-            path_commands.append(self.recommendations[best_child])
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
-            best_child, value = self.exploration_data.compute_best_child(progress)
-            if best_child is not None:
-                alternative, alternative_value = self.compute_best_alternative(path_commands, progress)
-                if alternative_value > value:
-                    path.append(alternative)
-                    return path
-        if len(path) < self.maximum_depth:
-            alternative, _ = self.compute_best_alternative(path_commands, progress)
-            path.append(alternative)
+            best_child, _ = self.exploration_data.compute_best_child(progress)
+        if len(path) < self.maximum_depth - 1 and best_child is None:
+            self.explore_every_child(path)
+            best_child, _ = self.exploration_data.compute_best_child(progress)
+            path.append(best_child)
         return path
+
+    def explore_every_child(self, starting_path: list[int]):
+        if len(starting_path) < self.maximum_depth:
+            start = starting_path[-1] + 1 if starting_path else 0
+            ending = len(self.recommendations) - self.recommendation_limit + (len(starting_path))
+            for i in range(start, ending):
+                starting_path.append(i)
+                self.expand(starting_path)
+                for _ in range(self.rollouts_per_child_expansion): self.simulate_play_out(starting_path)
+                self.exploration_data.handle_exploration(starting_path)
+                starting_path.pop()
 
     def expand(self, path):
         self.exploration_data.handle_expansion(path)
@@ -273,10 +246,13 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
     best_score = 0
     for i in range(recommendation_limit - 1):
         print(f"Running round {i + 1} of tree search")
-        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit//2, 100)
+        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes, 3, 10)
         if seed: searcher.seed(seed)
         searcher.explore_solutions(number_of_trials)
-        indexes.append(searcher.get_best_recommendation_indexes()[i])
+        new_index = searcher.get_best_recommendation_indexes()[i]
+        if new_index != i:
+            recommendations[i], recommendations[new_index] = recommendations[new_index], recommendations[i],
+        indexes.append(i)
         if searcher.get_best_score() > best_score:
             best_score = searcher.get_best_score()
             best = searcher.get_best_recommendation()
@@ -286,4 +262,5 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
                 best_score = greedy_score
                 best = greedy_result
                 print(f"Got better result with greedy {best_score}")
+
     return best, best_score
