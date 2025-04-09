@@ -323,11 +323,12 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
     if start is not None:
         if isinstance(start[0], int):
             best_recommendations = [recommendations[i] for i in start]
+            consumed = set(best_recommendations)
         else:
-            best_recommendations = start
+            raise ValueError("Must provide elements as indexes to use optional start argument with compute_best_recommendations_based_on_greedy_local_max")
     else:
         best_recommendations = []
-    consumed = set(best_recommendations)
+        consumed = set()
     num_remaining = recommendation_limit - len(best_recommendations)
     best_score = 0
     for _ in range(num_remaining):

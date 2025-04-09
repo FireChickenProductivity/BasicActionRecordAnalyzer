@@ -159,7 +159,7 @@ class MonteCarloTreeSearcher:
 
     def simulate_play_out(
             self, 
-            starting_path: list[PotentialCommandInformation],
+            starting_path: list[int],
         ):
         path = starting_path[:]
         last_potential_index = len(self.recommendations) - self.recommendation_limit - len(starting_path)
