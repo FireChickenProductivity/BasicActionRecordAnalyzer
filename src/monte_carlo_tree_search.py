@@ -266,7 +266,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
     indexes = []
     best: list[PotentialCommandInformation]
     best_score = 0
-    for i in range(recommendation_limit):
+    for i in range(recommendation_limit - 1):
         print(f"Running round {i + 1} of tree search")
         searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes)
         if seed: searcher.seed(seed)

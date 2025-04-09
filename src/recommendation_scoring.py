@@ -303,10 +303,7 @@ def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int,
             else:
                 recommendations.extend(group)
         total_count = len(recommendations) + len(non_overlapping)
-        if total_count == previous_number or total_count == recommendation_limit:
-            done = True
-        else:
-            print(f"Narrowed it down to {total_count}")
+        done = total_count == previous_number or total_count == recommendation_limit
     recommendations.extend(non_overlapping)
     return recommendations
 
