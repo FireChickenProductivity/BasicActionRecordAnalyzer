@@ -135,7 +135,9 @@ class MonteCarloTreeSearcher:
         scoring_function,
         recommendation_limit: int,
         recommendations: list[PotentialCommandInformation],
-        start
+        start,
+        maximum_depth: int,
+        rollouts_per_exploration: int=10,
     ):
         """recommendations should be sorted in ascending order of value"""
         self.scoring_function = scoring_function
@@ -147,6 +149,8 @@ class MonteCarloTreeSearcher:
         self.recommendations = recommendations
         self.start = start
         self.initial_progress = self.exploration_data.create_initial_for_path(self.start)
+        self.maximum_depth = min(len(start) + maximum_depth, recommendation_limit)
+        self.rollouts_per_exploration = rollouts_per_exploration
 
     def get_best_score(self):
         return self.best_score
@@ -219,7 +223,7 @@ class MonteCarloTreeSearcher:
         if alternative_value > value:
             path.append(alternative)
             return path
-        while best_child is not None and len(path) < self.recommendation_limit - 1:
+        while best_child is not None and len(path) < self.maximum_depth - 1:
             path.append(best_child)
             path_commands.append(self.recommendations[best_child])
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
@@ -229,7 +233,7 @@ class MonteCarloTreeSearcher:
                 if alternative_value > value:
                     path.append(alternative)
                     return path
-        if len(path) < self.recommendation_limit:
+        if len(path) < self.maximum_depth:
             alternative, _ = self.compute_best_alternative(path_commands, progress)
             path.append(alternative)
         return path
@@ -244,7 +248,7 @@ class MonteCarloTreeSearcher:
         starting_path = self.select_next_starting_path()
         assert len(starting_path) <= self.recommendation_limit, (starting_path, self.recommendation_limit)
         self.expand(starting_path)
-        self.simulate_play_out(starting_path)
+        for _ in range(self.rollouts_per_exploration): self.simulate_play_out(starting_path)
         self.exploration_data.handle_exploration(starting_path)
 
     def explore_solutions(self, num_trials: int):
@@ -269,7 +273,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
     best_score = 0
     for i in range(recommendation_limit - 1):
         print(f"Running round {i + 1} of tree search")
-        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes)
+        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit//2, 100)
         if seed: searcher.seed(seed)
         searcher.explore_solutions(number_of_trials)
         indexes.append(searcher.get_best_recommendation_indexes()[i])
