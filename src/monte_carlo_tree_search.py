@@ -162,7 +162,8 @@ class MonteCarloTreeSearcher:
             starting_path: list[int],
         ):
         path = starting_path[:]
-        last_potential_index = len(self.recommendations) - self.recommendation_limit - len(starting_path)
+        num_remaining = self.recommendation_limit - len(starting_path)
+        last_potential_index = len(self.recommendations) - num_remaining
         next_possible_index = len(starting_path)
         for _ in range(self.recommendation_limit - len(starting_path)):
             choice = random.randint(next_possible_index, last_potential_index)
