@@ -29,13 +29,13 @@ class ScoredNode:
         return self.parent
 
     def get_score(self):
-        return self.score
+        return self.score/self.times_explored
 
     def get_times_explored(self) -> int:
         return self.times_explored
 
     def handle_score(self, score):
-        self.score = max(score, self.score)
+        self.score += score
     
     def handle_exploration(self):
         self.times_explored += 1
@@ -81,7 +81,7 @@ class MonteCarloExplorationData:
     def compute_times_explored(self, progress: ScoredNode) -> int:
         return progress.get_times_explored() if progress else self.total_explored
 
-    def compute_best_child(self, progress: ScoredNode):
+    def compute_best_child(self, progress: ScoredNode, c=1):
         """Computes the best child and corresponding value using UCT"""
         if progress:
             children = progress.get_children()
@@ -96,7 +96,7 @@ class MonteCarloExplorationData:
 
         best_score = max(children, key=lambda x: x.get_score()).get_score()
         for child in children:
-            value = child.get_score()/best_score + math.sqrt(math.log(times_parent_explored)/child.get_times_explored())
+            value = child.get_score()/best_score + c*math.sqrt(math.log(times_parent_explored)/child.get_times_explored())
             if value > best_value:
                 best_index = child.get_index()
                 best_value = value
@@ -162,6 +162,9 @@ class MonteCarloTreeSearcher:
 
     def get_best_recommendation_indexes(self):
         return self.best_recommendation_indexes
+
+    def compute_best_average_score_move(self):
+        return self.exploration_data.compute_best_child(self.initial_progress, 0)[0]
 
     def simulate_play_out(
             self, 
