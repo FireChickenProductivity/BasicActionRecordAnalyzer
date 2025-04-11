@@ -1,15 +1,17 @@
 import os
+from sys import argv
 
 DEFAULT_MAX_CHAIN_LENGTH = 20
 NO_NUMBER_OF_RECOMMENDATIONS_LIMIT = 0
 
 class InputParameter:
-    def __init__(self, description, is_valid, explain_error, convert_value=lambda x: x, default_value=None):
+    def __init__(self, description, is_valid, explain_error, convert_value=lambda x: x, default_value=None, command_line_argument_index=None):
         self.description = description
         self.is_valid = is_valid
         self.explain_error = explain_error
         self.default_value = default_value
         self.convert_value = convert_value
+        self.command_line_argument_index = command_line_argument_index
 
 class InputParameters:
     def __init__(self):
@@ -24,7 +26,17 @@ def compute_input_text(parameter: InputParameter) -> str:
     text += ": "
     return text
 
+def can_get_parameter_from_command_line(parameter: InputParameter) -> bool:
+    return parameter.command_line_argument_index and len(argv) > parameter.command_line_argument_index
+
 def get_input_parameter_from_user(parameter: InputParameter):
+    if can_get_parameter_from_command_line(parameter):
+        commandline_argument = argv[parameter.command_line_argument_index]
+        if parameter.is_valid(commandline_argument):
+            return parameter.convert_value(commandline_argument)
+        else:
+            print(parameter.explain_error(commandline_argument))
+        
     needs_valid_input = True
     prompt = compute_input_text(parameter)
     while needs_valid_input:
@@ -44,6 +56,7 @@ def get_file_input_path_from_user() -> str:
         description="the file path to the command record",
         is_valid=os.path.exists,
         explain_error=lambda _: 'Please input a valid path!',
+        command_line_argument_index=1,
     )
     return get_input_parameter_from_user(input_path_parameter)
 
@@ -60,6 +73,7 @@ def get_max_chain_length_from_user():
         explain_error=_create_message_asking_for_a_positive_integer_value,
         default_value=DEFAULT_MAX_CHAIN_LENGTH,
         convert_value=int,
+        command_line_argument_index=2,
     )
     return get_input_parameter_from_user(max_chain_length_parameter)
 
@@ -70,6 +84,7 @@ def get_max_recommendations_from_user():
         explain_error=_create_message_asking_for_a_positive_integer_value,
         default_value=NO_NUMBER_OF_RECOMMENDATIONS_LIMIT,
         convert_value=int,
+        command_line_argument_index=3,
     )
     return get_input_parameter_from_user(parameter)
 
