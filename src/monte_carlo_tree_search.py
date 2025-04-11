@@ -183,8 +183,8 @@ class MonteCarloTreeSearcher:
             _, _, path = self.greedy_function(min(self.greedy_depth, num_remaining), self.recommendations, self.scoring_function, start=path, index_range=(next_possible_index, last_potential_index + 1))
             path = sorted(path)
             num_remaining = self.recommendation_limit - len(path)
-        last_potential_index = len(self.recommendations) - num_remaining
-        next_possible_index = path[-1]
+            last_potential_index = len(self.recommendations) - num_remaining
+            next_possible_index = path[-1]
         for _ in range(num_remaining):
             choice = random.randint(next_possible_index, last_potential_index)
             next_possible_index = choice + 1
@@ -259,6 +259,17 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
     best: list[PotentialCommandInformation]
     best_score = 0
     for i in range(recommendation_limit - 1):
+        if i > 0:
+            last_recommendations = [recommendations[i] for i in indexes]
+            current_score = scoring_function(last_recommendations)
+            recommendations = [
+                r for i, r in enumerate(recommendations)
+                if i in indexes or \
+                scoring_function(last_recommendations + [recommendations[i]]) >= current_score
+            ]
+            if len(recommendations) < recommendation_limit - i:
+                print("Ending tree search early")
+                break
         print(f"Running round {i + 1} of tree search")
         searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes, maximum_depth=recommendation_limit, rollouts_per_exploration=10, greedy_depth=1, greedy_function=greedy_function)
         if seed: searcher.seed(seed)
@@ -267,8 +278,9 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
         if new_index != i:
             recommendations[i], recommendations[new_index] = recommendations[new_index], recommendations[i],
         indexes.append(i)
-        if searcher.get_best_score() > best_score:
-            best_score = searcher.get_best_score()
+        last_score = searcher.get_best_score()
+        if last_score > best_score:
+            best_score = last_score
             best = searcher.get_best_recommendation()
         if greedy_function:
             greedy_result, greedy_score, _ = greedy_function(recommendation_limit, recommendations, start=indexes)
