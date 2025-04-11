@@ -137,6 +137,8 @@ class MonteCarloTreeSearcher:
         recommendations: list[PotentialCommandInformation],
         start,
         maximum_depth: int,
+        greedy_function,
+        greedy_depth: int=3,
         rollouts_per_exploration: int=10,
         rollouts_per_child_expansion: int=1,
     ):
@@ -153,6 +155,8 @@ class MonteCarloTreeSearcher:
         self.maximum_depth = min(len(start) + maximum_depth, recommendation_limit)
         self.rollouts_per_exploration = rollouts_per_exploration
         self.rollouts_per_child_expansion = rollouts_per_child_expansion
+        self.greedy_function = greedy_function
+        self.greedy_depth = greedy_depth
 
     def get_best_score(self):
         return self.best_score
@@ -169,12 +173,17 @@ class MonteCarloTreeSearcher:
     def simulate_play_out(
             self, 
             starting_path: list[int],
+            use_greedy: bool=False
         ):
         path = starting_path[:]
         num_remaining = self.recommendation_limit - len(starting_path)
+        if use_greedy:
+            _, _, path = self.greedy_function(min(self.greedy_depth, num_remaining), self.recommendations, self.scoring_function, start=path)
+            path = sorted(path)
+            num_remaining = self.recommendation_limit - len(path)
         last_potential_index = len(self.recommendations) - num_remaining
-        next_possible_index = len(starting_path)
-        for _ in range(self.recommendation_limit - len(starting_path)):
+        next_possible_index = len(path)
+        for _ in range(num_remaining):
             choice = random.randint(next_possible_index, last_potential_index)
             next_possible_index = choice + 1
             last_potential_index += 1
@@ -210,7 +219,7 @@ class MonteCarloTreeSearcher:
             for i in range(start, ending):
                 starting_path.append(i)
                 self.expand(starting_path)
-                for _ in range(self.rollouts_per_child_expansion): self.simulate_play_out(starting_path)
+                for _ in range(self.rollouts_per_child_expansion): self.simulate_play_out(starting_path, use_greedy=True)
                 self.exploration_data.handle_exploration(starting_path)
                 starting_path.pop()
 
@@ -224,7 +233,7 @@ class MonteCarloTreeSearcher:
         starting_path = self.select_next_starting_path()
         assert len(starting_path) <= self.recommendation_limit, (starting_path, self.recommendation_limit)
         self.expand(starting_path)
-        for _ in range(self.rollouts_per_exploration): self.simulate_play_out(starting_path)
+        for _ in range(self.rollouts_per_exploration): self.simulate_play_out(starting_path, use_greedy=True)
         self.exploration_data.handle_exploration(starting_path)
 
     def explore_solutions(self, num_trials: int):
@@ -249,7 +258,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
     best_score = 0
     for i in range(recommendation_limit - 1):
         print(f"Running round {i + 1} of tree search")
-        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes, 3, 10)
+        searcher = MonteCarloTreeSearcher(scoring_function, recommendation_limit, recommendations, indexes, maximum_depth=recommendation_limit, rollouts_per_exploration=10, greedy_depth=1, greedy_function=greedy_function)
         if seed: searcher.seed(seed)
         searcher.explore_solutions(number_of_trials)
         new_index = searcher.get_best_recommendation_indexes()[i]
@@ -260,7 +269,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
             best_score = searcher.get_best_score()
             best = searcher.get_best_recommendation()
         if greedy_function:
-            greedy_result, greedy_score = greedy_function(recommendation_limit, recommendations, start=indexes)
+            greedy_result, greedy_score, _ = greedy_function(recommendation_limit, recommendations, start=indexes)
             if greedy_score > best_score:
                 best_score = greedy_score
                 best = greedy_result

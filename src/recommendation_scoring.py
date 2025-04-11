@@ -320,7 +320,7 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
     if start is not None:
         if isinstance(start[0], int):
             best_recommendations = [recommendations[i] for i in start]
-            consumed = set(best_recommendations)
+            consumed = set(start)
         else:
             raise ValueError("Must provide elements as indexes to use optional start argument with compute_best_recommendations_based_on_greedy_local_max")
     else:
@@ -344,7 +344,7 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
         else:
             best_recommendations.append(recommendations[best_recommendation_index])
             consumed.add(best_recommendation_index)
-    return best_recommendations, best_score
+    return best_recommendations, best_score, [i for i in consumed]
 
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, is_verbose=False):
     if is_verbose: print(f"Narrowing it down from {len(recommendations)}.")
@@ -358,7 +358,7 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         print(f"Safe heuristics took {time.time() - current_time} seconds")
         print(f"Narrowed it down to {len(recommendations)}.")
         print("Finding the best combination of recommendations")
-    best_recommendations, greedy_score = compute_best_recommendations_based_on_greedy_local_max(
+    best_recommendations, greedy_score, _ = compute_best_recommendations_based_on_greedy_local_max(
         recommendation_limit,
         recommendations,
         scoring_function
