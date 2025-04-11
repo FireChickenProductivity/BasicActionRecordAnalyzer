@@ -177,12 +177,14 @@ class MonteCarloTreeSearcher:
         ):
         path = starting_path[:]
         num_remaining = self.recommendation_limit - len(starting_path)
+        next_possible_index = path[-1]
+        last_potential_index = len(self.recommendations) - num_remaining
         if use_greedy:
-            _, _, path = self.greedy_function(min(self.greedy_depth, num_remaining), self.recommendations, self.scoring_function, start=path)
+            _, _, path = self.greedy_function(min(self.greedy_depth, num_remaining), self.recommendations, self.scoring_function, start=path, index_range=(next_possible_index, last_potential_index + 1))
             path = sorted(path)
             num_remaining = self.recommendation_limit - len(path)
         last_potential_index = len(self.recommendations) - num_remaining
-        next_possible_index = len(path)
+        next_possible_index = path[-1]
         for _ in range(num_remaining):
             choice = random.randint(next_possible_index, last_potential_index)
             next_possible_index = choice + 1

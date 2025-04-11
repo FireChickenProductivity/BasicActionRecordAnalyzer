@@ -316,7 +316,7 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
 
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
-def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, start=None):
+def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, start=None, index_range=None):
     if start is not None:
         if isinstance(start[0], int):
             best_recommendations = [recommendations[i] for i in start]
@@ -326,13 +326,16 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
     else:
         best_recommendations = []
         consumed = set()
+    if not index_range:
+        index_range = (0, len(recommendations))
     num_remaining = recommendation_limit - len(best_recommendations)
     best_score = 0
     for _ in range(num_remaining):
         best_score = 0
         best_recommendation_index = None
-        for index, recommendation in enumerate(recommendations):
+        for index in range(index_range[0], index_range[1]):
             if index not in consumed:
+                recommendation = recommendations[index]
                 best_recommendations.append(recommendation)
                 score = scoring_function(best_recommendations)
                 if score > best_score:
