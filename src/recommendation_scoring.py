@@ -371,7 +371,7 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         recommendations,
         recommendation_limit,
         scoring_function,
-        (len(recommendations)//recommendation_limit)//10,
+        (len(recommendations)//recommendation_limit),
         greedy_function=compute_best_recommendations_based_on_greedy_local_max,
         #seed=best_recommendations
     )
