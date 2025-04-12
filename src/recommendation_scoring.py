@@ -367,6 +367,8 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         scoring_function
     )
     print('greedy_score', greedy_score)
+    if is_verbose:
+        current_time = time.time()
     monte_carlo_recommendation, monte_carlo_score = perform_monte_carlo_tree_search(
         recommendations,
         recommendation_limit,
@@ -375,6 +377,8 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         greedy_function=compute_best_recommendations_based_on_greedy_local_max,
         #seed=best_recommendations
     )
+    if is_verbose:
+        print(f"Search took {time.time() - current_time} seconds")
     if monte_carlo_score > greedy_score:
         best_recommendations = monte_carlo_recommendation
     print('monte_carlo_score', monte_carlo_score)

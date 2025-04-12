@@ -37,8 +37,8 @@ class ScoredNode:
     def handle_score(self, score):
         self.score += score
     
-    def handle_exploration(self):
-        self.times_explored += 1
+    def handle_exploration(self, times: int=1):
+        self.times_explored += times
 
     def add_child(self, node):
         self.children[node.get_index()] = node
@@ -115,12 +115,15 @@ class MonteCarloExplorationData:
     def compute_depth(self, progress: ScoredNode):
         return progress.get_depth() if progress else 0
 
-    def handle_exploration(self, path):
-        self.total_explored += 1
+    def handle_exploration(self, path, times: int=1):
+        self.total_explored += times
         progress = None
         for choice in path:
             progress = self.get_progress_from_choice(choice, progress)
-            progress.handle_exploration()
+            progress.handle_exploration(times)
+
+    def handle_child_exploration(self, child: ScoredNode):
+        child.handle_exploration()
 
     def create_initial_for_path(self, path: list[int]):
         progress = None
@@ -218,11 +221,14 @@ class MonteCarloTreeSearcher:
         if len(starting_path) < self.maximum_depth:
             start = starting_path[-1] + 1 if starting_path else 0
             ending = len(self.recommendations) - self.recommendation_limit + (len(starting_path))
+            self.exploration_data.handle_exploration(starting_path, ending - start)
+            progress = self.exploration_data.create_initial_for_path(starting_path)
             for i in range(start, ending):
                 starting_path.append(i)
                 self.expand(starting_path)
                 for _ in range(self.rollouts_per_child_expansion): self.simulate_play_out(starting_path, use_greedy=True)
-                self.exploration_data.handle_exploration(starting_path)
+                child = self.exploration_data.get_progress_from_choice(i, progress)
+                self.exploration_data.handle_child_exploration(child)
                 starting_path.pop()
 
     def expand(self, path):
