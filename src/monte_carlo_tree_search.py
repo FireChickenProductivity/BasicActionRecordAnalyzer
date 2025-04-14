@@ -185,6 +185,7 @@ class MonteCarloTreeSearcher:
             self, 
             starting_path: list[int],
             use_greedy: bool=False,
+            greedy_breadth: int=None,
         ):
         path = starting_path[:]
         num_remaining = self.recommendation_limit - len(starting_path)
@@ -200,6 +201,8 @@ class MonteCarloTreeSearcher:
             last_potential_index += 1
             path.append(choice)
         if use_greedy:
+            if greedy_breadth:
+                last_potential_index = min(next_possible_index + greedy_breadth - 1, last_potential_index)
             potential_recommendations, score, path = self.greedy_function(self.recommendation_limit, self.recommendations, self.scoring_function, start=path, index_range=(next_possible_index, last_potential_index + 1))
             path = sorted(path)
         else:
