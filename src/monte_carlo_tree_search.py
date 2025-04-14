@@ -149,7 +149,7 @@ class MonteCarloTreeSearcher:
         start,
         maximum_depth: int,
         greedy_function,
-        greedy_depth: int=3,
+        greedy_depth: int=1,
         rollouts_per_exploration: int=10,
         rollouts_per_child_expansion: int=1,
     ):
@@ -184,25 +184,27 @@ class MonteCarloTreeSearcher:
     def simulate_play_out(
             self, 
             starting_path: list[int],
-            use_greedy: bool=False
+            use_greedy: bool=False,
         ):
         path = starting_path[:]
         num_remaining = self.recommendation_limit - len(starting_path)
         next_possible_index = path[-1]
         last_potential_index = len(self.recommendations) - num_remaining
         if use_greedy:
-            _, _, path = self.greedy_function(min(self.greedy_depth, num_remaining), self.recommendations, self.scoring_function, start=path, index_range=(next_possible_index, last_potential_index + 1))
-            path = sorted(path)
-            num_remaining = self.recommendation_limit - len(path)
-            last_potential_index = len(self.recommendations) - num_remaining
-            next_possible_index = path[-1]
-        for _ in range(num_remaining):
+            num_random = max(num_remaining - self.greedy_depth, 0)
+        else:
+            num_random = num_remaining
+        for _ in range(num_random):
             choice = random.randint(next_possible_index, last_potential_index)
             next_possible_index = choice + 1
             last_potential_index += 1
             path.append(choice)
-        potential_recommendations = [self.recommendations[i] for i in path]
-        score = self.scoring_function(potential_recommendations)
+        if use_greedy:
+            potential_recommendations, score, path = self.greedy_function(self.recommendation_limit, self.recommendations, self.scoring_function, start=path, index_range=(next_possible_index, last_potential_index + 1))
+            path = sorted(path)
+        else:
+            potential_recommendations = [self.recommendations[i] for i in path]
+            score = self.scoring_function(potential_recommendations)
         if score > self.best_score:
             self.best_score = score
             self.best_recommendation = potential_recommendations
@@ -233,7 +235,7 @@ class MonteCarloTreeSearcher:
             for i in range(start, ending):
                 starting_path.append(i)
                 self.expand(starting_path)
-                for _ in range(self.rollouts_per_child_expansion): self.simulate_play_out(starting_path, use_greedy=True)
+                for _ in range(self.rollouts_per_child_expansion): self.simulate_play_out(starting_path, use_greedy=False)
                 child = self.exploration_data.get_progress_from_choice(i, progress)
                 self.exploration_data.handle_child_exploration(child)
                 starting_path.pop()
@@ -277,7 +279,6 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
         num_workers = multiprocessing.cpu_count()
     except:
         num_workers = 1
-    print(f"Creating {num_workers} workers.")
     search_arguments = (max(round(number_of_trials/num_workers), 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit, greedy_function)
     if num_workers == 1:
         best_score, best_recommendation_indexes = perform_worker_monte_carlo_tree_search(*search_arguments)
@@ -294,11 +295,11 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
                 if score > best_score:
                     best_score = score
                     best_recommendation_indexes = indexes
-    print(f"Best score {best_score}")
+    print(f"Best score {best_score} using {num_workers} workers.")
     return best_score, best_recommendation_indexes
                 
 
-def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, seed=None, greedy_function=None):
+def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None):
     recommendations = sorted(
             recommendations, 
             key=lambda r: r.get_number_of_words_saved(),

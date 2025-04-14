@@ -337,7 +337,7 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
             if index not in consumed:
                 recommendation = recommendations[index]
                 best_recommendations.append(recommendation)
-                score = scoring_function(best_recommendations)
+                score = scoring_function(best_recommendations + [recommendation])
                 if score > best_score:
                     best_score = score
                     best_recommendation_index = index
