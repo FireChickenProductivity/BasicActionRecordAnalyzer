@@ -361,13 +361,15 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         print(f"Safe heuristics took {time.time() - current_time} seconds")
         print(f"Narrowed it down to {len(recommendations)}.")
         print("Finding the best combination of recommendations")
+        current_time = time.time()
     best_recommendations, greedy_score, _ = compute_best_recommendations_based_on_greedy_local_max(
         recommendation_limit,
         recommendations,
         scoring_function
     )
-    print('greedy_score', greedy_score)
     if is_verbose:
+        print(f'greedy took {time.time() - current_time} seconds')
+        print('greedy_score', greedy_score)
         current_time = time.time()
     monte_carlo_recommendation, monte_carlo_score = perform_monte_carlo_tree_search(
         recommendations,
