@@ -27,6 +27,9 @@ class ScoredNode:
     def get_children(self):
         return self.children.values()
 
+    def get_children_dictionary(self):
+        return self.children
+
     def get_parent(self):
         return self.parent
 
@@ -62,7 +65,10 @@ class MonteCarloExplorationData:
         self.roots: dict[int, ScoredNode] = {}
         self.total_explored = 0
 
-    def get_roots(self):
+    def get_roots(self, path: list[int]):
+        if path:
+            progress = self.create_initial_for_path(path)
+            return progress.get_children_dictionary()
         return self.roots
 
     def back_propagate_score(self, path: list[int], score: int):
@@ -254,7 +260,7 @@ class MonteCarloTreeSearcher:
         assert len(starting_path) <= self.recommendation_limit, (starting_path, self.recommendation_limit)
         self.expand(starting_path)
         for _ in range(self.rollouts_per_exploration): self.simulate_play_out(starting_path, use_greedy=True)
-        self.exploration_data.handle_exploration(starting_path)
+        self.exploration_data.handle_exploration(starting_path, self.rollouts_per_exploration)
 
     def explore_solutions(self, num_trials: int):
         for _ in range(num_trials):
@@ -268,38 +274,66 @@ class MonteCarloTreeSearcher:
         self.best_score = 0
 
     def get_root_values(self):
-        roots = self.exploration_data.get_roots()
-        values = [[roots[i].get_total_score(), roots[i].get_times_explored()] for i in range(len(roots))]
+        roots = self.exploration_data.get_roots(self.start)
+        values = [[roots[i].get_total_score(), roots[i].get_times_explored()] for i in range(len(self.start), len(roots) + len(self.start))]
         return values
 
-def perform_worker_monte_carlo_tree_search(number_of_trials, *args):
+def perform_worker_monte_carlo_tree_search(number_of_trials, *args, aggregate_tree=False):
     searcher = MonteCarloTreeSearcher(*args, greedy_depth=1)
     searcher.explore_solutions(number_of_trials)
+    if aggregate_tree:
+        return searcher.get_root_values(), searcher.get_best_score(), searcher.get_best_recommendation_indexes()
     return searcher.get_best_score(), searcher.get_best_recommendation_indexes()
 
-def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int):
+def compute_best_index_from_aggregation(aggregation: list[list[int, float, int]]):
+    best_score = 0
+    best_index = 0
+    for i in range(len(aggregation)):
+        score, num_explored = aggregation[i]
+        average_score = score/num_explored
+        if average_score > best_score:
+            best_index = i
+            best_score = average_score
+    print(best_index, aggregation[best_index], best_score)
+    return best_index
+
+def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True):
     try:
         num_workers = multiprocessing.cpu_count()
     except:
         num_workers = 1
     search_arguments = (max(round(number_of_trials/num_workers), 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit, greedy_function)
     if num_workers == 1:
-        best_score, best_recommendation_indexes = perform_worker_monte_carlo_tree_search(*search_arguments)
+        return perform_worker_monte_carlo_tree_search(*search_arguments)
     else:
         results = []
         with multiprocessing.Pool(processes=num_workers) as p:
             for _ in range(num_workers):
-                result = p.apply_async(perform_worker_monte_carlo_tree_search, search_arguments)
+                result = p.apply_async(perform_worker_monte_carlo_tree_search, search_arguments, {"aggregate_tree": aggregate_tree})
                 results.append(result)
             best_score = 0
             best_recommendation_indexes: list[int]
+            if aggregate_tree:
+                value_aggregation = None
             for result in results:
-                score, indexes = result.get()
+                if aggregate_tree:
+                    values, score, indexes = result.get()
+                    if value_aggregation is None:
+                        value_aggregation = values
+                    else:
+                        for i, value in enumerate(values):
+                            total_score, num_explorations = value
+                            value_aggregation[i][0] += total_score
+                            value_aggregation[i][1] += num_explorations
+                else:
+                    score, indexes = result.get()
                 if score > best_score:
                     best_score = score
                     best_recommendation_indexes = indexes
-    print(f"Best score {best_score} using {num_workers} workers.")
-    return best_score, best_recommendation_indexes
+        print(f"Best score {best_score} using {num_workers} workers.")
+        if aggregate_tree:
+            return len(indexes) + compute_best_index_from_aggregation(value_aggregation), best_score, best_recommendation_indexes
+        return best_score, best_recommendation_indexes
                 
 
 def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None):
@@ -324,9 +358,14 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
                 print("Ending tree search early")
                 break
         print(f"Running round {i + 1} of tree search")
-        last_score, recommendation_indexes = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials)
+        result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=False)
+        if len(result) == 2:
+            last_score, recommendation_indexes = result
+            new_index = recommendation_indexes[i]
+        else:
+            new_index, last_score, recommendation_indexes = result
         new_recommendations = [recommendations[ri] for ri in recommendation_indexes]
-        new_index = recommendation_indexes[i]
+        
         if new_index != i:
             recommendations[i], recommendations[new_index] = recommendations[new_index], recommendations[i],
         indexes.append(i)
