@@ -270,8 +270,7 @@ class MonteCarloTreeSearcher:
 def perform_worker_monte_carlo_tree_search(number_of_trials, *args):
     searcher = MonteCarloTreeSearcher(*args, greedy_depth=1)
     searcher.explore_solutions(number_of_trials)
-    values = searcher.get_root_values()
-    return values, searcher.get_best_score(), searcher.get_best_recommendation_indexes()
+    return searcher.get_best_score(), searcher.get_best_recommendation_indexes()
 
 def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int):
     try:
@@ -281,7 +280,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
     print(f"Creating {num_workers} workers.")
     search_arguments = (max(round(number_of_trials/num_workers), 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit, greedy_function)
     if num_workers == 1:
-        values, best_score, best_recommendation_indexes = perform_worker_monte_carlo_tree_search(*search_arguments)
+        best_score, best_recommendation_indexes = perform_worker_monte_carlo_tree_search(*search_arguments)
     else:
         results = []
         with multiprocessing.Pool(processes=num_workers) as p:
@@ -290,29 +289,13 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
                 results.append(result)
             best_score = 0
             best_recommendation_indexes: list[int]
-            values: list = None
-            print('waiting for workers')
             for result in results:
-                search_values, score, indexes = result.get()
+                score, indexes = result.get()
                 if score > best_score:
                     best_score = score
                     best_recommendation_indexes = indexes
-                if values is None:
-                    values = search_values
-                else:
-                    i = 0
-                    for total_score, number_of_explorations in search_values:
-                        values[i][0] += total_score
-                        values[i][1] += number_of_explorations
-    best_index = -1
-    best_index_score = 0
-    for i in range(len(values)):
-        value = values[i][0]/values[i][1]
-        if value > best_index_score:
-            best_index_score = value
-            best_index = i
     print(f"Best score {best_score}")
-    return best_index, best_score, best_recommendation_indexes
+    return best_score, best_recommendation_indexes
                 
 
 def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, seed=None, greedy_function=None):
@@ -337,7 +320,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
                 print("Ending tree search early")
                 break
         print(f"Running round {i + 1} of tree search")
-        new_index, last_score, recommendation_indexes = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials)
+        last_score, recommendation_indexes = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials)
         new_recommendations = [recommendations[ri] for ri in recommendation_indexes]
         new_index = recommendation_indexes[i]
         if new_index != i:
