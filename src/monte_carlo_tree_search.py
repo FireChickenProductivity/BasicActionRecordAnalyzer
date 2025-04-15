@@ -274,7 +274,6 @@ class MonteCarloTreeSearcher:
 
     def get_root_values(self):
         roots = self.exploration_data.get_roots(self.initial_progress)
-        #values = [[roots[i].get_total_score(), roots[i].get_times_explored()] for i in range(len(self.start), len(roots) + len(self.start))]
         values = {}
         for key in roots:
             values[key] = [roots[key].get_total_score(), roots[key].get_times_explored()]
@@ -296,7 +295,6 @@ def compute_best_index_from_aggregation(aggregation: dict[list[float, int]]):
         if average_score > best_score:
             best_index = key
             best_score = average_score
-    print(best_index, aggregation[best_index], best_score)
     return best_index
 
 def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True):
@@ -304,7 +302,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
         num_workers = multiprocessing.cpu_count()
     except:
         num_workers = 1
-    search_arguments = (max(round(number_of_trials/num_workers), 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit, greedy_function)
+    search_arguments = (max(round(2*number_of_trials/num_workers), 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit, greedy_function)
     if num_workers == 1:
         return perform_worker_monte_carlo_tree_search(*search_arguments)
     else:
