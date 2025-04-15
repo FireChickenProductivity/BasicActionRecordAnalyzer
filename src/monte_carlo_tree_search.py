@@ -65,9 +65,8 @@ class MonteCarloExplorationData:
         self.roots: dict[int, ScoredNode] = {}
         self.total_explored = 0
 
-    def get_roots(self, path: list[int]):
-        if path:
-            progress = self.create_initial_for_path(path)
+    def get_roots(self, progress: ScoredNode):
+        if progress:
             return progress.get_children_dictionary()
         return self.roots
 
@@ -274,7 +273,7 @@ class MonteCarloTreeSearcher:
         self.best_score = 0
 
     def get_root_values(self):
-        roots = self.exploration_data.get_roots(self.start)
+        roots = self.exploration_data.get_roots(self.initial_progress)
         values = [[roots[i].get_total_score(), roots[i].get_times_explored()] for i in range(len(self.start), len(roots) + len(self.start))]
         return values
 
@@ -358,7 +357,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
                 print("Ending tree search early")
                 break
         print(f"Running round {i + 1} of tree search")
-        result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=False)
+        result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True)
         if len(result) == 2:
             last_score, recommendation_indexes = result
             new_index = recommendation_indexes[i]
