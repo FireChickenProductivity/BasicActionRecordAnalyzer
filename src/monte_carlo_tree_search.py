@@ -274,7 +274,10 @@ class MonteCarloTreeSearcher:
 
     def get_root_values(self):
         roots = self.exploration_data.get_roots(self.initial_progress)
-        values = [[roots[i].get_total_score(), roots[i].get_times_explored()] for i in range(len(self.start), len(roots) + len(self.start))]
+        #values = [[roots[i].get_total_score(), roots[i].get_times_explored()] for i in range(len(self.start), len(roots) + len(self.start))]
+        values = {}
+        for key in roots:
+            values[key] = [roots[key].get_total_score(), roots[key].get_times_explored()]
         return values
 
 def perform_worker_monte_carlo_tree_search(number_of_trials, *args, aggregate_tree=False):
@@ -284,14 +287,14 @@ def perform_worker_monte_carlo_tree_search(number_of_trials, *args, aggregate_tr
         return searcher.get_root_values(), searcher.get_best_score(), searcher.get_best_recommendation_indexes()
     return searcher.get_best_score(), searcher.get_best_recommendation_indexes()
 
-def compute_best_index_from_aggregation(aggregation: list[list[int, float, int]]):
+def compute_best_index_from_aggregation(aggregation: dict[list[float, int]]):
     best_score = 0
     best_index = 0
-    for i in range(len(aggregation)):
-        score, num_explored = aggregation[i]
+    for key in aggregation:
+        score, num_explored = aggregation[key]
         average_score = score/num_explored
         if average_score > best_score:
-            best_index = i
+            best_index = key
             best_score = average_score
     print(best_index, aggregation[best_index], best_score)
     return best_index
@@ -320,10 +323,10 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
                     if value_aggregation is None:
                         value_aggregation = values
                     else:
-                        for i, value in enumerate(values):
-                            total_score, num_explorations = value
-                            value_aggregation[i][0] += total_score
-                            value_aggregation[i][1] += num_explorations
+                        for key in values:
+                            total_score, num_explorations = values[key]
+                            value_aggregation[key][0] += total_score
+                            value_aggregation[key][1] += num_explorations
                 else:
                     score, indexes = result.get()
                 if score > best_score:
@@ -331,7 +334,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
                     best_recommendation_indexes = indexes
         print(f"Best score {best_score} using {num_workers} workers.")
         if aggregate_tree:
-            return len(indexes) + compute_best_index_from_aggregation(value_aggregation), best_score, best_recommendation_indexes
+            return compute_best_index_from_aggregation(value_aggregation), best_score, best_recommendation_indexes
         return best_score, best_recommendation_indexes
                 
 
