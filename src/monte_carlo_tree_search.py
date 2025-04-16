@@ -302,7 +302,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
         num_workers = multiprocessing.cpu_count()
     except:
         num_workers = 1
-    trials_per_worker = number_of_trials if num_workers == 1 else round(number_of_trials/math.sqrt(num_workers))
+    trials_per_worker = number_of_trials if num_workers == 1 else round(1.7*number_of_trials/num_workers)
     search_arguments = (max(trials_per_worker, 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit, greedy_function)
     if num_workers == 1:
         return perform_worker_monte_carlo_tree_search(*search_arguments)
