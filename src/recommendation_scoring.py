@@ -2,7 +2,7 @@ from recommendation_generation import PotentialCommandInformation, compute_strin
 from input_parsing import NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
 from collections import Counter
 from action_records import BasicAction
-from action_utilities import create_insert_action, is_insert, get_insert_text
+from action_utilities import create_insert_action, is_insert, get_insert_text, is_insert_only_actions, get_insert_text_from_insert_only_actions
 from monte_carlo_tree_search import perform_monte_carlo_tree_search
 import time
 
@@ -134,26 +134,64 @@ def _compute_number_of_commands_including_action(recommendations: list[Potential
             result[unique_action] += 1
     return result
 
+def _compute_single_inserts_from_commands(recommendations: list[PotentialCommandInformation]):
+    single_inserts: set[str] = set()
+    for recommendation in recommendations:
+        actions = recommendation.get_actions()
+        if is_insert_only_actions(actions):
+            single_inserts.add(get_insert_text_from_insert_only_actions(actions))
+    return single_inserts
+
+def _compute_max_nonidentical_prefix_or_suffix_similarity(text: str, others: set[str]):
+    best = 0
+    for other in others:
+        if other != text and len(other) >= best:
+            smallest_size = min(len(other), len(text))
+            for i in range(1, smallest_size + 1):
+                text_sub_string = text[-i:]
+                if other[-i:] == text_sub_string:
+                    best = max(len(text_sub_string), best)
+                else:
+                    break
+            for i in range(1, smallest_size + 1):
+                text_sub_string = text[:i]
+                if other[:i] == text_sub_string:
+                    best = max(len(text_sub_string), best)
+                else:
+                    break
+    return best
+
 def _score_recommendations_weighting_by_inverse_action_frequency(
     recommendations: list[PotentialCommandInformation],
-    num_commands_including_action: dict[str, int]
+    num_commands_including_action: dict[str, int],
+    single_inserts: set[str]
 ) -> float:
     score = 0.0
     for recommendation in recommendations:
         actions = recommendation.get_actions()
-        weight = 0
-        for action in actions:
-            representation = compute_string_representation_of_actions([action])
-            weight += 1/(num_commands_including_action[representation])
-        weight /= len(actions)
+        if is_insert_only_actions(actions) and len(single_inserts) > 1:
+            inserted_text = get_insert_text_from_insert_only_actions(actions)
+            similarity = _compute_max_nonidentical_prefix_or_suffix_similarity(inserted_text, single_inserts)
+            if similarity == 0:
+                weight = 1
+            else:
+                weight = (similarity/len(inserted_text))**2
+        else:
+            weight = 0
+            for action in actions:
+                representation = compute_string_representation_of_actions([action])
+                weight += 1/(num_commands_including_action[representation])
+            weight /= len(actions)
         score += weight*recommendation.get_number_of_words_saved()
     return score
 
 def compute_heuristic_recommendation_score(recommendations: list[PotentialCommandInformation]) -> float:
     num_commands_including_action = _compute_number_of_commands_including_action(recommendations)
+    single_inserts = _compute_single_inserts_from_commands(recommendations)
     return _score_recommendations_weighting_by_inverse_action_frequency(
         recommendations,
-        num_commands_including_action
+        num_commands_including_action,
+        single_inserts
     )
 
 def _append_insert_subsequences(collection: list, action: BasicAction):
