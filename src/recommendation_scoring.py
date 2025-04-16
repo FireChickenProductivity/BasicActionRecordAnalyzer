@@ -5,6 +5,8 @@ from action_records import BasicAction
 from action_utilities import create_insert_action, is_insert, get_insert_text, is_insert_only_actions, get_insert_text_from_insert_only_actions
 from monte_carlo_tree_search import perform_monte_carlo_tree_search
 import time
+import multiprocessing
+import math
 
 def compute_words_saved_per_use(command: PotentialCommandInformation):
     return command.get_number_of_words_saved()/command.get_number_of_times_used()
@@ -352,9 +354,71 @@ def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, 
         recommendations = filter_out_inferior_within_nonoverlapping_regions(recommendation_limit, recommendations)
     return recommendations
 
+worker_recommendations = None
+def initialize_worker(recommendations):
+    global worker_recommendations
+    worker_recommendations = recommendations
+def _parallelly_compute_recommendation_based_on_greedy_local_max(best_recommendations, index_range, consumed, scoring_function, cpu_count: int, pool):
+    work_per_worker = math.ceil((index_range[1] - index_range[0])/cpu_count)
+    start: int = index_range[0]
+    results = []
+    for _ in range(cpu_count):
+        ending = min(index_range[1], start + work_per_worker)
+        worker_range = (start, ending)
+        result = pool.apply_async(_sequentially_compute_best_recommendation_based_on_greedy_local_max, (None, best_recommendations, worker_range, consumed, scoring_function))
+        results.append(result)
+        start += work_per_worker
+
+    best_score = -1
+    best_index = None
+    for result in results:
+        index, score = result.get()
+        if score > best_score:
+            best_score = score
+            best_index = index
+    return best_index, best_score
+
+def _sequentially_compute_best_recommendation_based_on_greedy_local_max(recommendations, best_recommendations, index_range, consumed, scoring_function):
+    best_score = 0
+    best_recommendation_index = -1
+    for index in range(index_range[0], index_range[1]):
+        if index not in consumed:
+            recommendation = recommendations[index] if recommendations else worker_recommendations[index]
+            best_recommendations.append(recommendation)
+            score = scoring_function(best_recommendations + [recommendation])
+            if score > best_score:
+                best_score = score
+                best_recommendation_index = index
+            best_recommendations.pop()
+    return best_recommendation_index, best_score
+
+def _compute_best_recommendations_based_on_greedy_local_max_helper(recommendation_limit, recommendations, best_recommendations, index_range, consumed, scoring_function, *, parallelize: bool):
+    num_remaining = recommendation_limit - len(best_recommendations)
+    best_score = 0
+    cpu_count = multiprocessing.cpu_count()
+    should_parallelize = parallelize and cpu_count > 1 and (recommendation_limit - len(best_recommendations))*(index_range[1] - index_range[0])/cpu_count > len(recommendations)
+    if should_parallelize:
+        with multiprocessing.Pool(cpu_count, initializer=initialize_worker, initargs=(recommendations,)) as p:
+            for _ in range(num_remaining):
+                best_recommendation_index, best_score = _parallelly_compute_recommendation_based_on_greedy_local_max(best_recommendations, index_range, consumed, scoring_function, cpu_count, p)
+                if best_score == 0:
+                    break
+                else:
+                    best_recommendations.append(recommendations[best_recommendation_index])
+                    consumed.add(best_recommendation_index)
+    else:
+        for _ in range(num_remaining):
+            best_recommendation_index, best_score = _sequentially_compute_best_recommendation_based_on_greedy_local_max(recommendations, best_recommendations, index_range, consumed, scoring_function)
+            if best_score == 0:
+                break
+            else:
+                best_recommendations.append(recommendations[best_recommendation_index])
+                consumed.add(best_recommendation_index)
+    return best_recommendations, best_score, [i for i in consumed]
+
 #TODO: Potentially Deal with recommendations for this function with a linked list class. Using a list may be faster because of cache optimization
 #Try to optimize to not need repeatedly recomputing the action representations
-def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, start=None, index_range=None):
+def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, start=None, index_range=None, parallelize=False):
     if start is not None:
         if isinstance(start[0], int):
             best_recommendations = [recommendations[i] for i in start]
@@ -366,26 +430,7 @@ def compute_best_recommendations_based_on_greedy_local_max(recommendation_limit,
         consumed = set()
     if not index_range:
         index_range = (0, len(recommendations))
-    num_remaining = recommendation_limit - len(best_recommendations)
-    best_score = 0
-    for _ in range(num_remaining):
-        best_score = 0
-        best_recommendation_index = None
-        for index in range(index_range[0], index_range[1]):
-            if index not in consumed:
-                recommendation = recommendations[index]
-                best_recommendations.append(recommendation)
-                score = scoring_function(best_recommendations + [recommendation])
-                if score > best_score:
-                    best_score = score
-                    best_recommendation_index = index
-                best_recommendations.pop()
-        if best_score == 0:
-            break
-        else:
-            best_recommendations.append(recommendations[best_recommendation_index])
-            consumed.add(best_recommendation_index)
-    return best_recommendations, best_score, [i for i in consumed]
+    return _compute_best_recommendations_based_on_greedy_local_max_helper(recommendation_limit, recommendations, best_recommendations, index_range, consumed, scoring_function, parallelize=parallelize)
 
 def compute_best_recommendations(recommendation_limit, recommendations, scoring_function=compute_heuristic_recommendation_score, is_verbose=False):
     if is_verbose: print(f"Narrowing it down from {len(recommendations)}.")
@@ -403,7 +448,8 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
     best_recommendations, greedy_score, _ = compute_best_recommendations_based_on_greedy_local_max(
         recommendation_limit,
         recommendations,
-        scoring_function
+        scoring_function,
+        parallelize=True,
     )
     if is_verbose:
         print(f'greedy took {time.time() - current_time} seconds')
@@ -415,7 +461,6 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         scoring_function,
         round(len(recommendations)/recommendation_limit),
         greedy_function=compute_best_recommendations_based_on_greedy_local_max,
-        #seed=best_recommendations
     )
     if is_verbose:
         print(f"Search took {time.time() - current_time} seconds")

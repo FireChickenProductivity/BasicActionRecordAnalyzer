@@ -375,7 +375,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
             print(f"New best result {best_score}")
             best = new_recommendations
         if greedy_function:
-            greedy_result, greedy_score, _ = greedy_function(recommendation_limit, recommendations, start=indexes)
+            greedy_result, greedy_score, _ = greedy_function(recommendation_limit, recommendations, start=indexes, parallelize=True)
             if greedy_score > best_score:
                 best_score = greedy_score
                 best = greedy_result
