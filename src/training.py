@@ -14,6 +14,7 @@ if __name__ == '__main__':
     numbers_of_recommendations = (10, 20, 30)
     c_scores = {}
     results = {}
+    number_of_trials = 10
     for record_name in record_names:
         record = obtain_file_record(data_directory, record_name)
         for chain_size in chain_sizes:
@@ -22,18 +23,20 @@ if __name__ == '__main__':
                 recommendations = filter_out_recommendations_using_safe_heuristics(number_of_recommendations, recommendations)
                 for number_of_cores in cores_to_use:
                     for c in c_values:
-                        score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max,)
-                        if c in c_scores:
-                            c_scores[c].append(score)
-                        else:
-                            c_scores[c] = [score]
-                        results[f"{record_name} cs{chain_size} nr {number_of_recommendations} cores: {number_of_cores} c{c}"] = (record_name, chain_size, number_of_recommendations, number_of_cores, c)
-                        print('c_scores', c_scores)
+                        for trial in range(number_of_trials):
+                            _, score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max,)
+                            c_score_key = f"{c}:{record_name}"
+                            if c_score_key in c_scores:
+                                c_scores[c_score_key].append(score)
+                            else:
+                                c_scores[c_score_key] = [score]
+                            results[f"{record_name} cs{chain_size} nr {number_of_recommendations} cores: {number_of_cores} c{c} trial{trial+1}"] = (record_name, chain_size, number_of_recommendations, number_of_cores, c)
+                            print('c_scores', c_scores)
     for c in c_scores:
         c_scores[c] = sum(c_scores[c])/len(c_scores[c])
-    print('number_of_recommendations', number_of_recommendations)  
-    with open(os.path.join(data_directory, "traininglog")) as f:
-        f.write(json.dumps((c_scores, results)))
+    print('c_scores', c_scores)
+    with open(os.path.join(data_directory, "traininglog"), "w") as f:
+        f.write(json.dumps((c_scores, results)) + "\n")
     
                         
 
