@@ -29,7 +29,7 @@ if __name__ == '__main__':
                 for number_of_cores in cores_to_use:
                     for c in c_values:
                         for trial in range(number_of_trials):
-                            _, score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max,)
+                            _, score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max, cores_override=number_of_cores)
                             c_score_key = f"{c}:{record_name}"
                             if c_score_key in c_scores:
                                 c_scores[c_score_key].append(score)

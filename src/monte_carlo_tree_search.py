@@ -299,7 +299,10 @@ def compute_best_index_from_aggregation(aggregation: dict[list[float, int]]):
 
 def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True, cores_override: int=None):
     try:
-        num_workers = max(multiprocessing.cpu_count(), cores_override)
+        if cores_override:
+            num_workers = min(cores_override, multiprocessing.cpu_count())
+        else:
+            num_workers = multiprocessing.cpu_count()
     except:
         num_workers = 1
     trials_per_worker = number_of_trials if num_workers == 1 else round(1.7*number_of_trials/num_workers)
