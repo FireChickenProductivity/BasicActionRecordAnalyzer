@@ -297,9 +297,9 @@ def compute_best_index_from_aggregation(aggregation: dict[list[float, int]]):
             best_score = average_score
     return best_index
 
-def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True):
+def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True, cores_override: int=None):
     try:
-        num_workers = multiprocessing.cpu_count()
+        num_workers = max(multiprocessing.cpu_count(), cores_override)
     except:
         num_workers = 1
     trials_per_worker = number_of_trials if num_workers == 1 else round(1.7*number_of_trials/num_workers)
@@ -337,7 +337,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
         return best_score, best_recommendation_indexes
                 
 
-def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None):
+def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None, cores_override: int=None):
     recommendations = sorted(
             recommendations, 
             key=lambda r: r.get_number_of_words_saved(),
@@ -359,7 +359,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
                 print("Ending tree search early")
                 break
         print(f"Running round {i + 1} of tree search")
-        result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True)
+        result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True, cores_override=cores_override)
         if len(result) == 2:
             last_score, recommendation_indexes = result
             new_index = recommendation_indexes[i]
