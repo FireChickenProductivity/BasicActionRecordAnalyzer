@@ -3,18 +3,23 @@ from basic_action_record_analysis import *
 from recommendation_scoring import *
 import json
 import os
+import time
 
 if __name__ == '__main__':
     program_directory = compute_main_program_directory()
     data_directory = compute_data_directory(program_directory)
     record_names = ("/Users/sam/projects/ArtificialTalonCommandHistoryGenerator/out", "Users/sam/projects/ArtificialTalonCommandHistoryGenerator/recommendation")
-    chain_sizes = (5, 10, 20)
-    c_values = (1/10000, 1/1000, 1/100, 0.5, 0.1, 1, math.sqrt(2), 2, 3)
-    cores_to_use = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-    numbers_of_recommendations = (10, 20, 30)
+    chain_sizes = (5, 20)
+    c_values = (1/10000, 0.5, 0.1, 1, math.sqrt(2), 2, 3)
+    cores_to_use = (1, 5, 10)
+    numbers_of_recommendations = (10, 30)
     c_scores = {}
     results = {}
-    number_of_trials = 10
+    number_of_trials = 5
+    total = len(record_names)*len(chain_sizes)*len(numbers_of_recommendations)*len(cores_to_use)*len(c_values)*number_of_trials
+    print(f"Running {total} iterations.")
+    iteration = 1
+    start = time.time()
     for record_name in record_names:
         record = obtain_file_record(data_directory, record_name)
         for chain_size in chain_sizes:
@@ -32,6 +37,11 @@ if __name__ == '__main__':
                                 c_scores[c_score_key] = [score]
                             results[f"{record_name} cs{chain_size} nr {number_of_recommendations} cores: {number_of_cores} c{c} trial{trial+1}"] = (record_name, chain_size, number_of_recommendations, number_of_cores, c)
                             print('c_scores', c_scores)
+                            print(f"Progress: {iteration}/{total}")
+                            estimated_time_remaining = ((time.time() - start)/(iteration))*(total - iteration)
+                            estimated_remaining_hours = estimated_time_remaining/(60**2)
+                            print(f"Estimated remaining time {estimated_remaining_hours} hours")
+                            iteration += 1
     for c in c_scores:
         c_scores[c] = sum(c_scores[c])/len(c_scores[c])
     print('c_scores', c_scores)
