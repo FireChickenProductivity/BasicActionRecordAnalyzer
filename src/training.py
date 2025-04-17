@@ -23,9 +23,9 @@ if __name__ == '__main__':
     for record_name in record_names:
         record = obtain_file_record(data_directory, record_name)
         for chain_size in chain_sizes:
-            recommendations = compute_recommendations_from_record(record, chain_size, verbose = False)
+            unfiltered_recommendations = compute_recommendations_from_record(record, chain_size, verbose = False)
             for number_of_recommendations in numbers_of_recommendations:
-                recommendations = filter_out_recommendations_using_safe_heuristics(number_of_recommendations, recommendations)
+                recommendations = filter_out_recommendations_using_safe_heuristics(number_of_recommendations, unfiltered_recommendations)
                 for number_of_cores in cores_to_use:
                     for c in c_values:
                         for trial in range(number_of_trials):
