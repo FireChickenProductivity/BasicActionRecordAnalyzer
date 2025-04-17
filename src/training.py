@@ -8,9 +8,9 @@ import time
 if __name__ == '__main__':
     program_directory = compute_main_program_directory()
     data_directory = compute_data_directory(program_directory)
-    record_names = ("/Users/sam/projects/ArtificialTalonCommandHistoryGenerator/out", "Users/sam/projects/ArtificialTalonCommandHistoryGenerator/recommendation")
+    record_names = ("/Users/sam/projects/ArtificialTalonCommandHistoryGenerator/out",)
     chain_sizes = (5, 20)
-    c_values = (1/10000, 0.5, 0.1, 1, math.sqrt(2), 2, 3)
+    c_values = (1/10000, 1/1000, 1/100, 0.5, 0.1, 1, math.sqrt(2), 2, 3)
     cores_to_use = (1, 5, 10)
     numbers_of_recommendations = (10, 30)
     c_scores = {}
