@@ -339,6 +339,18 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
             return compute_best_index_from_aggregation(value_aggregation), best_score, best_recommendation_indexes
         return best_score, best_recommendation_indexes
                 
+def perform_double_greedy(indexes, search_start_index, recommendations, recommendation_limit, greedy_function):
+    best_score = -1
+    best_index = -1
+    for i in range(search_start_index, len(recommendations)):
+        indexes.append(i)
+        _, score, _ = greedy_function(recommendation_limit, recommendations, start=indexes, parallelize=True)
+        if score > best_score:
+            best_score = score
+            best_index = i
+        indexes.pop()
+    print('best score from double greedy', best_score)
+    return best_score, indexes + [best_index]
 
 def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None, cores_override: int=None):
     recommendations = sorted(
@@ -362,7 +374,10 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
                 print("Ending tree search early")
                 break
         print(f"Running round {i + 1} of tree search")
-        result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True, cores_override=cores_override)
+        if i == recommendation_limit - 2 and number_of_trials*2 >= len(recommendations):
+            result = perform_double_greedy(indexes, len(indexes), recommendations, recommendation_limit, greedy_function)
+        else:
+            result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True, cores_override=cores_override)
         if len(result) == 2:
             last_score, recommendation_indexes = result
             new_index = recommendation_indexes[i]
