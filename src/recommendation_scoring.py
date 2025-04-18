@@ -275,14 +275,22 @@ def initialize_redundancy_filter_worker(data):
 
 def find_redundant_commands_from_command(
     command,
+    sequences=None,
+    to_remove=None,
 ):
-    global action_subsequences
-    redundant = []
+    if not sequences:
+        global action_subsequences
+        sequences = action_subsequences
+        redundant = []
     for sub_sequence in compute_action_subsequences_including_leading_and_trailing_inserts(command.get_actions()):
-        if sub_sequence in action_subsequences and \
-            action_subsequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
-            redundant.append(sub_sequence)
-    return redundant
+        if sub_sequence in sequences and \
+            sequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
+            if to_remove is not None:
+                to_remove.add(sub_sequence)
+            else:
+                redundant.append(sub_sequence)
+    if to_remove is None:
+        return redundant
 
 def filter_out_recommendations_redundant_smaller_commands(
     recommendations: list[PotentialCommandInformation],
@@ -307,10 +315,7 @@ def filter_out_recommendations_redundant_smaller_commands(
     else:
         for sequence in action_sequences:
             command = action_sequences[sequence]
-            for sub_sequence in compute_action_subsequences_including_leading_and_trailing_inserts(command.get_actions()):
-                if sub_sequence in action_sequences and \
-                    action_sequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
-                    to_remove.add(sub_sequence)
+            find_redundant_commands_from_command(command, action_sequences, to_remove)
     for sequence in to_remove:
         action_sequences.pop(sequence)
     result = [action_sequences[s] for s in action_sequences]
@@ -377,9 +382,7 @@ def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int,
 
 
 def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
-    start = time.time()
     recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
-    print(f"Redundancy filtering time: {time.time() - start}")
     if len(recommendations) > recommendation_limit:
         recommendations = filter_out_inferior_within_nonoverlapping_regions(recommendation_limit, recommendations)
     return recommendations

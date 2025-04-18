@@ -1,6 +1,7 @@
 import datetime
 from pathlib import PurePath
 import os
+import time
 
 from action_records import BasicAction, read_file_record
 from input_parsing import InputParameters, get_input_parameters_from_user, NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
@@ -100,7 +101,9 @@ def compute_recommendations_from_record(record, max_command_chain_considered = 1
 def generate_recommendations(recommendation_directory, data_directory, parameters: InputParameters):
     record = obtain_file_record(data_directory, parameters.input_path)
     print('finished reading record')
+    recommendations_start_time = time.time()
     recommendations = compute_recommendations_from_record(record, parameters.max_chain_length, verbose = True)
+    print(f"created recommendations in {(time.time() - recommendations_start_time)} seconds")
     if parameters.max_number_of_recommendations != NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
         print('identifying the best', parameters.max_number_of_recommendations, 'recommendations')
         recommendations = compute_best_recommendations(
