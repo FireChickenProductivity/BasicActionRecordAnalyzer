@@ -177,7 +177,7 @@ def _score_recommendations_weighting_by_inverse_action_frequency(
             if similarity == 0:
                 weight = 1
             else:
-                weight = (similarity/len(inserted_text))**2
+                weight = (((len(inserted_text) - similarity)/len(inserted_text)))**2
         else:
             weight = 0
             for action in actions:
