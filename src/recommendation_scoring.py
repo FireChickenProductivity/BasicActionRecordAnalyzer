@@ -268,21 +268,49 @@ def compute_action_subsequences_including_leading_and_trailing_inserts(
             for subsequence in subsequences:
                 yield subsequence
 
+action_subsequences=None
+def initialize_redundancy_filter_worker(data):
+    global action_subsequences
+    action_subsequences = data
+
+def find_redundant_commands_from_command(
+    command,
+):
+    global action_subsequences
+    redundant = []
+    for sub_sequence in compute_action_subsequences_including_leading_and_trailing_inserts(command.get_actions()):
+        if sub_sequence in action_subsequences and \
+            action_subsequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
+            redundant.append(sub_sequence)
+    return redundant
+
 def filter_out_recommendations_redundant_smaller_commands(
-    recommendations: list[PotentialCommandInformation]
+    recommendations: list[PotentialCommandInformation],
+    parallelize=True
 ) -> list[PotentialCommandInformation]:
     #For every command that is a shorter version of another command but is not used any more times: remove it
     action_sequences: dict[str, PotentialCommandInformation] = {}
     for command in recommendations:
         representation = compute_string_representation_of_actions(command.get_actions())
         action_sequences[representation] = command
+    num_cpus = multiprocessing.cpu_count()
     to_remove = set()
-    for sequence in action_sequences:
-        command = action_sequences[sequence]
-        for sub_sequence in compute_action_subsequences_including_leading_and_trailing_inserts(command.get_actions()):
-            if sub_sequence in action_sequences and \
-                action_sequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
-                to_remove.add(sub_sequence)
+    if num_cpus > 1 and parallelize:
+        results = []
+        with multiprocessing.Pool(num_cpus, initializer=initialize_redundancy_filter_worker, initargs=(action_sequences,)) as pool:
+            for sequence in action_sequences:
+                command = action_sequences[sequence]
+                results.append(pool.apply_async(find_redundant_commands_from_command, (command,)))
+            for result in results:
+                for sub_sequence in result.get():
+                    to_remove.add(sub_sequence)
+    else:
+        for sequence in action_sequences:
+            command = action_sequences[sequence]
+            for sub_sequence in compute_action_subsequences_including_leading_and_trailing_inserts(command.get_actions()):
+                if sub_sequence in action_sequences and \
+                    action_sequences[sub_sequence].get_number_of_times_used() == command.get_number_of_times_used():
+                    to_remove.add(sub_sequence)
     for sequence in to_remove:
         action_sequences.pop(sequence)
     result = [action_sequences[s] for s in action_sequences]
@@ -349,7 +377,9 @@ def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int,
 
 
 def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
+    start = time.time()
     recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
+    print(f"Redundancy filtering time: {time.time() - start}")
     if len(recommendations) > recommendation_limit:
         recommendations = filter_out_inferior_within_nonoverlapping_regions(recommendation_limit, recommendations)
     return recommendations
