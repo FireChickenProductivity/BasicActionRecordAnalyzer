@@ -2,6 +2,7 @@ import datetime
 from pathlib import PurePath
 import os
 import time
+import multiprocessing
 
 from action_records import BasicAction, read_file_record
 from input_parsing import InputParameters, get_input_parameters_from_user, NO_NUMBER_OF_RECOMMENDATIONS_LIMIT
@@ -88,7 +89,17 @@ def output_recommendations(recommended_commands, output_directory):
 
 def create_command_information_set_from_record(record, max_command_chain_considered, *, verbose = False):
     command_set: CommandInformationSet = CommandInformationSet()    
-    for chain in range(len(record)): command_set.process_chain_usage(record, chain, max_command_chain_considered, verbose = verbose)
+    num_cpus = multiprocessing.cpu_count()
+    if num_cpus > 1:
+        maximum_parallelism = min(num_cpus, max_command_chain_considered)
+        with multiprocessing.Pool(
+                maximum_parallelism,
+                initializer=initialize_worker_with_record,
+                initargs=(record,)
+            ) as pool:
+            for chain in range(len(record)): command_set.process_chain_usage(record, chain, max_command_chain_considered, verbose = verbose, pool = pool)
+    else:
+        for chain in range(len(record)): command_set.process_chain_usage(record, chain, max_command_chain_considered, verbose = verbose)
     return command_set
 
 def compute_recommendations_from_record(record, max_command_chain_considered = 100, *, verbose = False, filter = basic_command_filter):

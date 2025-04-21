@@ -332,6 +332,45 @@ def should_command_chain_not_cross_entry_at_record_index(record, chain_start_ind
     return is_record_entry_recording_start(record_entry) or \
         is_command_after_chain_start_exceeding_time_gap_threshold(record_entry, chain_start_index, current_chain_index)
 
+worker_record=None
+def initialize_worker_with_record(record):
+    global worker_record
+    worker_record = record
+
+def add_next_record_command_to_chain(record, command_chain):
+    command_chain.append_command(record[command_chain.get_next_chain_index()])
+
+def simplify_command_chain(command_chain):
+    simplified_command_chain = compute_insert_simplified_command_chain(command_chain)
+    simplified_command_chain = compute_repeat_simplified_command_chain(simplified_command_chain)
+    return simplified_command_chain
+
+def do_chain_asynchronous_work(start_index, ending_index):
+    concrete_chain = CommandChain(None, [], start_index)
+    for _ in range(start_index, ending_index+1):
+        add_next_record_command_to_chain(worker_record, concrete_chain)
+    simplified_command_chain = simplify_command_chain(concrete_chain)
+    abstract_commands = create_abstract_commands(simplified_command_chain)
+    abstract_representations = [CommandInformationSet.compute_representation(a.command_chain) for a in abstract_commands]
+    concrete_representation = CommandInformationSet.compute_representation(simplified_command_chain)
+    return simplified_command_chain, concrete_representation, abstract_commands, abstract_representations
+    
+def create_abstract_commands(command_chain):
+    commands = []
+    if should_make_abstract_repeat_representation(command_chain):
+        abstract_repeat_representation = make_abstract_repeat_representation_for(command_chain)
+        commands.append(abstract_repeat_representation)
+    abstract_prose_commands = make_abstract_prose_representations_for_command(command_chain)
+    commands.extend(abstract_prose_commands)
+    return commands
+
+def compute_chain_size(record, chain, chain_target):
+    num_targets = 0
+    for chain_ending_index in range(chain, chain_target): 
+        if should_command_chain_not_cross_entry_at_record_index(record, chain, chain_ending_index): break
+        num_targets += 1
+    return num_targets
+
 class CommandInformationSet:
     def __init__(self):
         self.commands = {}
@@ -339,44 +378,60 @@ class CommandInformationSet:
     def insert_command(self, command, representation):
         self.commands[representation] = command
     
-    def process_abstract_command_usage(self, instantiation: AbstractCommandInstantiation):
-        representation = CommandInformationSet.compute_representation(instantiation.command_chain)
+    def process_abstract_command_usage(self, instantiation: AbstractCommandInstantiation, representation: str=None):
+        if not representation:
+            representation = CommandInformationSet.compute_representation(instantiation.command_chain)
         if representation not in self.commands:
             self.insert_command(PotentialAbstractCommandInformation(instantiation), representation)
         self.commands[representation].process_usage(instantiation)
-
-    def create_abstract_commands(self, command_chain):
-        commands = []
-        if should_make_abstract_repeat_representation(command_chain):
-            abstract_repeat_representation = make_abstract_repeat_representation_for(command_chain)
-            commands.append(abstract_repeat_representation)
-        abstract_prose_commands = make_abstract_prose_representations_for_command(command_chain)
-        commands.extend(abstract_prose_commands)
-        return commands
     
     def handle_needed_abstract_commands(self, command_chain):
-        abstract_commands = self.create_abstract_commands(command_chain)
+        abstract_commands = create_abstract_commands(command_chain)
         for abstract_command in abstract_commands: self.process_abstract_command_usage(abstract_command)
 
-    def process_command_usage(self, command_chain):
-        representation = CommandInformationSet.compute_representation(command_chain)
+    def process_concrete_command_usage(self, command_chain, representation: str=None):
+        if not representation:
+            representation = CommandInformationSet.compute_representation(command_chain)
         if representation not in self.commands:
             self.insert_command(PotentialCommandInformation(command_chain.get_actions()), representation)
         self.commands[representation].process_usage(command_chain)
+
+    def process_command_usage(self, command_chain):
+        self.process_concrete_command_usage(command_chain)
         self.handle_needed_abstract_commands(command_chain)
     
     def process_partial_chain_usage(self, record, command_chain):
-        command_chain.append_command(record[command_chain.get_next_chain_index()])
-        simplified_command_chain = compute_insert_simplified_command_chain(command_chain)
-        simplified_command_chain = compute_repeat_simplified_command_chain(simplified_command_chain)
+        add_next_record_command_to_chain(record, command_chain)
+        simplified_command_chain = simplify_command_chain(command_chain)
         self.process_command_usage(simplified_command_chain)
 
-    def process_chain_usage(self, record, chain, max_command_chain_considered, verbose = False):
+    def process_chain_usage_in_parallel(self, chain, num_targets, pool):
+        results = []
+        for chain_ending_index in range(chain, chain + num_targets):
+            result = pool.apply_async(do_chain_asynchronous_work, (chain, chain_ending_index))
+            results.append(result)
+        for result in results:
+            concrete_chain, concrete_representation, abstract_commands, abstract_representations = result.get()
+            self.process_concrete_command_usage(concrete_chain, concrete_representation)
+            for i in range(len(abstract_commands)):
+                self.process_abstract_command_usage(abstract_commands[i], abstract_representations[i])
+
+    def process_chain_usage_sequentially(self, record, chain, chain_target):
         command_chain: CommandChain = CommandChain(None, [], chain)
-        chain_target = min(len(record), chain + max_command_chain_considered)
         for chain_ending_index in range(chain, chain_target): 
             if should_command_chain_not_cross_entry_at_record_index(record, chain, chain_ending_index): break
             self.process_partial_chain_usage(record, command_chain)
+
+    def process_chain_usage(self, record, chain, max_command_chain_considered, verbose = False, pool = None):
+        chain_target = min(len(record), chain + max_command_chain_considered)
+        should_run_sequentially = True
+        if pool is not None:
+            num_targets = compute_chain_size(record, chain, chain_target)
+            if num_targets > 1:
+                self.process_chain_usage_in_parallel(chain, num_targets, pool)
+                should_run_sequentially = False
+        if should_run_sequentially:
+            self.process_chain_usage_sequentially(record, chain, chain_target)
         if verbose: print('chain', chain + 1, 'out of', len(record), 'target: ', chain_target)
 
     @staticmethod
