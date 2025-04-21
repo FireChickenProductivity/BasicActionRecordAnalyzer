@@ -30,12 +30,12 @@ if __name__ == '__main__':
                     for c in c_values:
                         for trial in range(number_of_trials):
                             _, score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max, cores_override=number_of_cores)
-                            c_score_key = f"{c}:{record_name}"
-                            if c_score_key in c_scores:
-                                c_scores[c_score_key].append(score)
+                            result_representation = f"{record_name} cs{chain_size} nr {number_of_recommendations} cores: {number_of_cores} c{c}"
+                            if result_representation in c_scores:
+                                c_scores[result_representation].append(score)
                             else:
-                                c_scores[c_score_key] = [score]
-                            results[f"{record_name} cs{chain_size} nr {number_of_recommendations} cores: {number_of_cores} c{c} trial{trial+1}"] = (record_name, chain_size, number_of_recommendations, number_of_cores, c)
+                                c_scores[result_representation] = [score]
+                            results[result_representation + f" trial{trial+1}"] = (record_name, chain_size, number_of_recommendations, number_of_cores, c)
                             print('c_scores', c_scores)
                             print(f"Progress: {iteration}/{total}")
                             estimated_time_remaining = ((time.time() - start)/(iteration))*(total - iteration)
