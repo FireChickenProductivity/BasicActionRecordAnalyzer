@@ -10,7 +10,7 @@ if __name__ == '__main__':
     data_directory = compute_data_directory(program_directory)
     record_names = ("/Users/sam/projects/ArtificialTalonCommandHistoryGenerator/out",)
     chain_sizes = (5, 20)
-    c_values = (1/10000, 1/1000, 1/100, 0.5, 0.1, 1, math.sqrt(2), 2, 3)
+    c_values = (1/10000, 1/1000, 1/100, 1, math.sqrt(2), 2, 3)
     cores_to_use = (1, 5, 10)
     numbers_of_recommendations = (10, 30)
     c_scores = {}
@@ -29,7 +29,7 @@ if __name__ == '__main__':
                 for number_of_cores in cores_to_use:
                     for c in c_values:
                         for trial in range(number_of_trials):
-                            _, score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max, cores_override=number_of_cores)
+                            _, score = perform_monte_carlo_tree_search(recommendations, number_of_recommendations, compute_heuristic_recommendation_score, round(len(recommendations)/number_of_recommendations),greedy_function=compute_best_recommendations_based_on_greedy_local_max, cores_override=number_of_cores, c=c)
                             result_representation = f"{record_name} cs{chain_size} nr {number_of_recommendations} cores: {number_of_cores} c{c}"
                             if result_representation in c_scores:
                                 c_scores[result_representation].append(score)
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     for c in c_scores:
         c_scores[c] = sum(c_scores[c])/len(c_scores[c])
     print('c_scores', c_scores)
-    with open(os.path.join(data_directory, "traininglog"), "w") as f:
+    with open(os.path.join(data_directory, "traininglog"), "a") as f:
         f.write(json.dumps((c_scores, results)) + "\n")
     
                         

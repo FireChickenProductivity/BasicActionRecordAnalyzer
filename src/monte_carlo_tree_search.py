@@ -154,6 +154,7 @@ class MonteCarloTreeSearcher:
         start,
         maximum_depth: int,
         greedy_function,
+        c: float,
         greedy_depth: int=1,
         rollouts_per_exploration: int=10,
         rollouts_per_child_expansion: int=1,
@@ -173,6 +174,7 @@ class MonteCarloTreeSearcher:
         self.rollouts_per_child_expansion = rollouts_per_child_expansion
         self.greedy_function = greedy_function
         self.greedy_depth = greedy_depth
+        self.c = c
 
     def get_best_score(self):
         return self.best_score
@@ -223,14 +225,14 @@ class MonteCarloTreeSearcher:
         #Recursively pick best node until reaching leaf
         path = self.start[:]
         progress = self.initial_progress
-        best_child, _ = self.exploration_data.compute_best_child(progress)
+        best_child, _ = self.exploration_data.compute_best_child(progress, self.c)
         while best_child is not None and len(path) < self.maximum_depth - 1:
             path.append(best_child)
             progress = self.exploration_data.get_progress_from_choice(best_child, progress)
-            best_child, _ = self.exploration_data.compute_best_child(progress)
+            best_child, _ = self.exploration_data.compute_best_child(progress, self.c)
         if len(path) < self.maximum_depth - 1 and best_child is None:
             self.explore_every_child(path)
-            best_child, _ = self.exploration_data.compute_best_child(progress)
+            best_child, _ = self.exploration_data.compute_best_child(progress, self.c)
             path.append(best_child)
         return path
 
@@ -297,7 +299,7 @@ def compute_best_index_from_aggregation(aggregation: dict[list[float, int]]):
             best_score = average_score
     return best_index
 
-def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True, cores_override: int=None):
+def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials: int, aggregate_tree=True, cores_override: int=None, c: float=1):
     try:
         if cores_override:
             num_workers = min(cores_override, multiprocessing.cpu_count())
@@ -306,7 +308,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
     except:
         num_workers = 1
     trials_per_worker = number_of_trials if num_workers == 1 else round(1.7*number_of_trials/num_workers)
-    search_arguments = (max(trials_per_worker, 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit - len(indexes) - 1, greedy_function)
+    search_arguments = (max(trials_per_worker, 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit - len(indexes) - 1, greedy_function, c)
     if num_workers == 1:
         return perform_worker_monte_carlo_tree_search(*search_arguments)
     else:
@@ -352,7 +354,7 @@ def perform_double_greedy(indexes, search_start_index, recommendations, recommen
     print('best score from double greedy', best_score)
     return best_score, indexes + [best_index]
 
-def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None, cores_override: int=None):
+def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None, cores_override: int=None, c: float=1):
     recommendations = sorted(
             recommendations, 
             key=lambda r: r.get_number_of_words_saved(),
@@ -377,7 +379,7 @@ def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scori
         if i == recommendation_limit - 2 and number_of_trials*2 >= len(recommendations):
             result = perform_double_greedy(indexes, len(indexes), recommendations, recommendation_limit, greedy_function)
         else:
-            result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True, cores_override=cores_override)
+            result = perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommendation_limit, recommendations, indexes, greedy_function, number_of_trials, aggregate_tree=True, cores_override=cores_override, c=c)
         if len(result) == 2:
             last_score, recommendation_indexes = result
             new_index = recommendation_indexes[i]
