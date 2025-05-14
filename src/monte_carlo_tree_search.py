@@ -354,7 +354,7 @@ def perform_double_greedy(indexes, search_start_index, recommendations, recommen
     print('best score from double greedy', best_score)
     return best_score, indexes + [best_index]
 
-def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None, cores_override: int=None, c: float=1):
+def perform_monte_carlo_tree_search(recommendations, recommendation_limit, scoring_function, number_of_trials, greedy_function=None, cores_override: int=None, c: float=0.000001):
     recommendations = sorted(
             recommendations, 
             key=lambda r: r.get_number_of_words_saved(),
