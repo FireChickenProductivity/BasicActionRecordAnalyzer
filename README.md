@@ -10,6 +10,8 @@ You give it a path to the history to analyze after the program starts running.
 
 You give it the maximum command chain size to consider or press enter to use the default. This is the number of consecutive commands in the history to consider merging into a single command during analysis. Making this bigger can find longer patterns but takes longer.
 
+You then give it the number of recommendations to output or press enter to have it output all the recommendations it computes. You can use this if you want the program to try to find the best n. 
+
 The program generates a Recommendations directory outputting each set of recommendations in a text file. It will output some statistics proceeded by a # and the actions for every recommended command. 
 
 # State of the Project
