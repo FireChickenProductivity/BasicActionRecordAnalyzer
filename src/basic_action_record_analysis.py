@@ -114,7 +114,7 @@ def generate_recommendations(recommendation_directory, data_directory, parameter
     print('finished reading record')
     recommendations_start_time = time.time()
     recommendations = compute_recommendations_from_record(record, parameters.max_chain_length, verbose = True)
-    print(f"created recommendations in {(time.time() - recommendations_start_time)} seconds")
+    print(f"created {len(recommendations)} recommendations in {(time.time() - recommendations_start_time)} seconds")
     if parameters.max_number_of_recommendations != NO_NUMBER_OF_RECOMMENDATIONS_LIMIT:
         print('identifying the best', parameters.max_number_of_recommendations, 'recommendations')
         recommendations = compute_best_recommendations(
@@ -125,7 +125,7 @@ def generate_recommendations(recommendation_directory, data_directory, parameter
     print('outputting recommendations')
     output_recommendations(recommendations, recommendation_directory)
     print('completed')
-
+#/Users/sam/projects/ArtificialTalonCommandHistoryGenerator/out
 def guarantee_directory_exists(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)

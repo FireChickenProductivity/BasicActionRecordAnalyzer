@@ -383,8 +383,8 @@ def filter_out_inferior_within_nonoverlapping_regions(recommendation_limit: int,
 
 def filter_out_recommendations_using_safe_heuristics(recommendation_limit: int, recommendations: list[PotentialCommandInformation]):
     recommendations = filter_out_recommendations_redundant_smaller_commands(recommendations)
-    if len(recommendations) > recommendation_limit:
-        recommendations = filter_out_inferior_within_nonoverlapping_regions(recommendation_limit, recommendations)
+    # if len(recommendations) > recommendation_limit:
+    #     recommendations = filter_out_inferior_within_nonoverlapping_regions(recommendation_limit, recommendations)
     return recommendations
 
 worker_recommendations = None
@@ -418,7 +418,7 @@ def _sequentially_compute_best_recommendation_based_on_greedy_local_max(recommen
         if index not in consumed:
             recommendation = recommendations[index] if recommendations else worker_recommendations[index]
             best_recommendations.append(recommendation)
-            score = scoring_function(best_recommendations + [recommendation])
+            score = scoring_function(best_recommendations)
             if score > best_score:
                 best_score = score
                 best_recommendation_index = index
@@ -488,6 +488,8 @@ def compute_best_recommendations(recommendation_limit, recommendations, scoring_
         print(f'greedy took {time.time() - current_time} seconds')
         print('greedy_score', greedy_score)
         current_time = time.time()
+    print("recomputed score", scoring_function(best_recommendations))
+    exit()
     monte_carlo_recommendation, monte_carlo_score = perform_monte_carlo_tree_search(
         recommendations,
         recommendation_limit,

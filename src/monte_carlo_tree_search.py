@@ -3,7 +3,6 @@
 from recommendation_generation import PotentialCommandInformation
 import random
 import math
-from calculation_utilities import compute_max
 import multiprocessing
 
 
@@ -30,9 +29,6 @@ class ScoredNode:
     def get_children_dictionary(self):
         return self.children
 
-    def get_parent(self):
-        return self.parent
-
     def get_score(self):
         return self.score/self.times_explored
     
@@ -47,9 +43,6 @@ class ScoredNode:
     
     def handle_exploration(self, times: int=1):
         self.times_explored += times
-
-    def add_child(self, node):
-        self.children[node.get_index()] = node
 
     def has_child(self, index):
         return index in self.children
@@ -179,14 +172,8 @@ class MonteCarloTreeSearcher:
     def get_best_score(self):
         return self.best_score
 
-    def get_best_recommendation(self):
-        return self.best_recommendation
-
     def get_best_recommendation_indexes(self):
         return self.best_recommendation_indexes
-
-    def compute_best_average_score_move(self):
-        return self.exploration_data.compute_best_child(self.initial_progress, 0)[0]
 
     def simulate_play_out(
             self, 
@@ -267,13 +254,6 @@ class MonteCarloTreeSearcher:
         for _ in range(num_trials):
             self.explore_solution()
 
-    def seed(self, seed):
-        indexes = [self.recommendations.index(i) for i in seed]
-        self.expand(indexes)
-        self.simulate_play_out(indexes)
-        self.exploration_data.handle_exploration(indexes)
-        self.best_score = 0
-
     def get_root_values(self):
         roots = self.exploration_data.get_roots(self.initial_progress)
         values = {}
@@ -307,7 +287,7 @@ def perform_possibly_parallel_monte_carlo_tree_search(scoring_function, recommen
             num_workers = multiprocessing.cpu_count()
     except:
         num_workers = 1
-    trials_per_worker = number_of_trials if num_workers == 1 else round(1.7*number_of_trials/num_workers)
+    trials_per_worker = number_of_trials if num_workers == 1 else round(number_of_trials/num_workers)
     search_arguments = (max(trials_per_worker, 10), scoring_function, recommendation_limit, recommendations, indexes, recommendation_limit - len(indexes) - 1, greedy_function, c)
     if num_workers == 1:
         return perform_worker_monte_carlo_tree_search(*search_arguments)
